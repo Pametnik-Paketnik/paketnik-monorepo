@@ -1,7 +1,14 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import { compare } from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
@@ -27,5 +34,32 @@ export class AuthService {
     responseDto.updatedAt = user.updatedAt;
 
     return responseDto;
+  }
+
+  async login(loginDto: LoginDto): Promise<LoginResponseDto> {
+    try {
+      // Find user by username
+      const user = await this.usersService.findByUsername(loginDto.username);
+
+      // Compare passwords
+      const isPasswordValid = await compare(
+        loginDto.password,
+        user.hashedPassword,
+      );
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      return {
+        success: true,
+        message: 'Login successful',
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Invalid credentials');
+    }
   }
 }
