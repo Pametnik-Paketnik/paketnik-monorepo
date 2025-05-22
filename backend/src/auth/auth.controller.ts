@@ -3,7 +3,6 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
-import { UserResponseDto } from '../users/dto/user-response.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Authentication')
@@ -17,7 +16,7 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'User successfully registered',
-    type: UserResponseDto,
+    type: LoginResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -27,7 +26,7 @@ export class AuthController {
     status: 409,
     description: 'Username already exists',
   })
-  async register(@Body() registerDto: RegisterDto): Promise<UserResponseDto> {
+  async register(@Body() registerDto: RegisterDto): Promise<LoginResponseDto> {
     return this.authService.register(registerDto);
   }
 

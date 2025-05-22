@@ -7,7 +7,6 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
-import { UserResponseDto } from '../users/dto/user-response.dto';
 import { compare } from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -20,7 +19,7 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<UserResponseDto> {
+  async register(registerDto: RegisterDto): Promise<LoginResponseDto> {
     // Check if passwords match
     if (registerDto.password !== registerDto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
@@ -32,14 +31,15 @@ export class AuthService {
       password: registerDto.password,
     });
 
-    // Map to response DTO
-    const responseDto = new UserResponseDto();
-    responseDto.id = user.id;
-    responseDto.username = user.username;
-    responseDto.createdAt = user.createdAt;
-    responseDto.updatedAt = user.updatedAt;
+    // Generate JWT token
+    const payload = { sub: user.id, username: user.username };
+    const token = await this.jwtService.signAsync(payload);
 
-    return responseDto;
+    return {
+      success: true,
+      message: 'Registration successful',
+      access_token: token,
+    };
   }
 
   async login(loginDto: LoginDto): Promise<LoginResponseDto> {
