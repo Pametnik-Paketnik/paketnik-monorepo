@@ -20,4 +20,5 @@ export const envValidationSchema = Joi.object({
   // Direct4me
   DIRECT4ME_TOKEN: Joi.string().required(),
   DIRECT4ME_BASEURL: Joi.string().required(),
+  DIRECT4ME_TOKEN_FORMAT: Joi.number().integer().min(0).max(6).required(),
 });

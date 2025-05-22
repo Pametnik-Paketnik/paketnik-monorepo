@@ -18,6 +18,7 @@ interface OpenBoxResponse {
 export class Direct4meService {
   private readonly apiKey: string;
   private readonly baseUrl: string;
+  private readonly configTokenFormat: number;
 
   constructor(
     private readonly httpService: HttpService,
@@ -26,16 +27,23 @@ export class Direct4meService {
     const config = getDirect4meConfig(this.configService);
     this.apiKey = config.apiKey ?? '';
     this.baseUrl = config.baseUrl ?? '';
+    this.configTokenFormat = config.tokenFormat;
   }
 
-  async openBox(openBoxDto: OpenBoxDto): Promise<OpenBoxResponse> {
+  async openBox(
+    openBoxDto: OpenBoxDto,
+  ): Promise<OpenBoxResponse & { tokenFormat: number }> {
     try {
+      const usedTokenFormat =
+        typeof openBoxDto.tokenFormat === 'number'
+          ? openBoxDto.tokenFormat
+          : this.configTokenFormat;
       const response: AxiosResponse<OpenBoxResponse> = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}`,
           {
             boxId: openBoxDto.boxId,
-            tokenFormat: openBoxDto.tokenFormat,
+            tokenFormat: usedTokenFormat,
           },
           {
             headers: {
@@ -53,7 +61,7 @@ export class Direct4meService {
         );
       }
 
-      return response.data;
+      return { ...response.data, tokenFormat: usedTokenFormat };
     } catch (error: unknown) {
       let errorMessage = 'Unknown error';
       function hasStringMessage(obj: unknown): obj is { message: string } {
