@@ -16,4 +16,8 @@ export const envValidationSchema = Joi.object({
   // JWT
   JWT_SECRET: Joi.string().required(),
   JWT_EXPIRATION: Joi.string().default('1h'),
+
+  // Direct4me
+  DIRECT4ME_TOKEN: Joi.string().required(),
+  DIRECT4ME_BASEURL: Joi.string().required(),
 });
