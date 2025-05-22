@@ -5,6 +5,10 @@ import { getDirect4meConfig } from '../../config/direct4me.config';
 import { OpenBoxDto } from '../dto/open-box.dto';
 import { AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UnlockHistory } from '../entities/unlock-history.entity';
+import { User } from '../../users/entities/user.entity';
 
 interface OpenBoxResponse {
   data: string;
@@ -23,6 +27,8 @@ export class Direct4meService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    @InjectRepository(UnlockHistory)
+    private readonly unlockHistoryRepo: Repository<UnlockHistory>,
   ) {
     const config = getDirect4meConfig(this.configService);
     this.apiKey = config.apiKey ?? '';
@@ -32,12 +38,15 @@ export class Direct4meService {
 
   async openBox(
     openBoxDto: OpenBoxDto,
+    user: User,
   ): Promise<OpenBoxResponse & { tokenFormat: number }> {
+    const usedTokenFormat =
+      typeof openBoxDto.tokenFormat === 'number'
+        ? openBoxDto.tokenFormat
+        : this.configTokenFormat;
+    let status = 'failure';
+    let errorMessage = '';
     try {
-      const usedTokenFormat =
-        typeof openBoxDto.tokenFormat === 'number'
-          ? openBoxDto.tokenFormat
-          : this.configTokenFormat;
       const response: AxiosResponse<OpenBoxResponse> = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}`,
@@ -60,10 +69,9 @@ export class Direct4meService {
           HttpStatus.BAD_GATEWAY,
         );
       }
-
+      status = response.data.result === 0 ? 'success' : 'failure';
       return { ...response.data, tokenFormat: usedTokenFormat };
     } catch (error: unknown) {
-      let errorMessage = 'Unknown error';
       function hasStringMessage(obj: unknown): obj is { message: string } {
         return (
           typeof obj === 'object' &&
@@ -82,9 +90,17 @@ export class Direct4meService {
         }
       }
       throw new HttpException(
-        `Failed to open box: ${errorMessage}`,
+        `Failed to open box: ${errorMessage || 'Unknown error'}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    } finally {
+      // Always log the unlock attempt
+      await this.unlockHistoryRepo.save({
+        user,
+        boxId: String(openBoxDto.boxId),
+        status,
+        tokenFormat: usedTokenFormat,
+      });
     }
   }
 }

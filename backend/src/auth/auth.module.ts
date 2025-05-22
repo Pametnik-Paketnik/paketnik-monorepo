@@ -8,6 +8,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { Direct4meService } from './services/direct4me.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UnlockHistory } from './entities/unlock-history.entity';
 
 @Module({
   imports: [
@@ -24,6 +26,7 @@ import { Direct4meService } from './services/direct4me.service';
       inject: [ConfigService],
     }),
     HttpModule,
+    TypeOrmModule.forFeature([UnlockHistory]),
   ],
   providers: [AuthService, JwtStrategy, Direct4meService],
   controllers: [AuthController],

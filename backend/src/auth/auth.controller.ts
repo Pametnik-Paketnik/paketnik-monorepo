@@ -5,6 +5,8 @@ import {
   HttpStatus,
   HttpCode,
   UseGuards,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -19,6 +21,12 @@ import {
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Direct4meService } from './services/direct4me.service';
 import { OpenBoxDto } from './dto/open-box.dto';
+import { UsersService } from '../users/users.service';
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user?: { userId: number };
+}
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -26,6 +34,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly direct4meService: Direct4meService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Post('register')
@@ -72,7 +81,12 @@ export class AuthController {
     status: 200,
     description: 'Returns the token data for opening the box',
   })
-  async openBox(@Body() openBoxDto: OpenBoxDto): Promise<any> {
-    return this.direct4meService.openBox(openBoxDto);
+  async openBox(
+    @Body() openBoxDto: OpenBoxDto,
+    @Req() req: RequestWithUser,
+  ): Promise<any> {
+    if (!req.user?.userId) throw new UnauthorizedException();
+    const user = await this.usersService.findOne(req.user.userId);
+    return this.direct4meService.openBox(openBoxDto, user);
   }
 }

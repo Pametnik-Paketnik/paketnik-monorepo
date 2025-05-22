@@ -7,16 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 );
 
--- 2. LoginAttempt tabela
-CREATE TABLE IF NOT EXISTS login_attempts (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
-    ip_address VARCHAR(45),
-    successful BOOLEAN NOT NULL
-);
-
--- 3. UnlockHistory tabela
+-- 2. UnlockHistory tabela
 CREATE TABLE IF NOT EXISTS unlock_history (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
