@@ -9,7 +9,6 @@ services:
       - "3000:3000"
     volumes:
       - ./backend:/app
-      - backend_node_modules:/app/node_modules
     env_file:
       - ./backend/.env.development
     command: pnpm start:dev
@@ -71,4 +70,3 @@ services:
 volumes:
   pgdata:
   pgadmin-data:
-  backend_node_modules:
