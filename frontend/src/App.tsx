@@ -1,23 +1,18 @@
-import React from 'react'
-import { Outlet, Link } from 'react-router-dom'
+// src/App.tsx
+
+import { Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout'
+import HomePage from './routes/Home.tsx'
+import SettingsPage from './routes/About.tsx'
 
 export default function App() {
   return (
-    <div>
-      <nav>
-        <ul>
-          <li>
-            <Link to="/">Home</Link>
-          </li>
-          <li>
-            <Link to="/about">About</Link>
-          </li>
-        </ul>
-      </nav>
-
-      <main>
-        <Outlet />
-      </main>
-    </div>
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<HomePage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        {/* Add more routes here */}
+      </Route>
+    </Routes>
   )
 }
