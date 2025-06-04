@@ -5,35 +5,16 @@ export const fetchBoxes = createAsyncThunk('boxes/fetchBoxes', async (_, { rejec
   try {
     const state = getState() as RootState;
     const token = state.auth.accessToken;
-    const hostId = state.auth.user?.id;
-
-    console.log('Fetching boxes with:', { token: !!token, hostId });
-
-    if (!hostId) {
-      console.error('No host ID available');
-      throw new Error('No host ID available');
-    }
     
-    const res = await fetch(`http://localhost:3000/api/boxes/host/${hostId}`, {
+    const res = await fetch('http://localhost:3000/api/boxes', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
-
-    // console.log('API Response status:', res.status);
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error('API Error:', errorText);
-      throw new Error('Failed to fetch boxes');
-    }
-
-    const data = await res.json();
-    // console.log('Received boxes data:', data);
-    return data;
+    if (!res.ok) throw new Error('Failed to fetch boxes');
+    return await res.json();
   } catch (err: any) {
-    console.error('Error in fetchBoxes:', err);
     return rejectWithValue(err.message);
   }
 });
@@ -49,17 +30,14 @@ const boxesSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchBoxes.pending, (state) => {
-        // console.log('Fetching boxes...');
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchBoxes.fulfilled, (state, action) => {
-        // console.log('Boxes fetched successfully:', action.payload);  
         state.loading = false;
         state.items = action.payload;
       })
       .addCase(fetchBoxes.rejected, (state, action) => {
-        // console.error('Failed to fetch boxes:', action.payload);
         state.loading = false;
         state.error = action.payload as string;
       });

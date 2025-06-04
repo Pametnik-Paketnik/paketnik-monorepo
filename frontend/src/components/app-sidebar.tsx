@@ -10,8 +10,6 @@ import {
   Send,
   Settings2,
   SquareTerminal,
-  House,
-  History
 } from "lucide-react"
 import { useSelector } from "react-redux"
 import type { RootState } from "@/store"
@@ -40,27 +38,56 @@ const data = {
     {
       title: "Domov",
       url: "/",
-      icon: House,
+      icon: SquareTerminal,
       isActive: true,
       items: [],
     },
     {
-      title: "Paketniki",
+      title: "Boxes",
       url: "/boxes",
       icon: BookOpen,
       items: [],
     },
     {
-      title: "Rezervacije",
+      title: "Reservations",
       url: "/reservations",
       icon: Bot,
       items: [],
     },
     {
-      title: "Zgodovina odprtij",
-      url: "/box-opening-history",
-      icon: History,
-      items: [],
+      title: "Zgodovina odpiranj",
+      url: "#",
+      icon: Settings2,
+      items: [
+        {
+          title: "General",
+          url: "#",
+        },
+        {
+          title: "Team",
+          url: "#",
+        },
+        {
+          title: "Billing",
+          url: "#",
+        },
+        {
+          title: "Limits",
+          url: "#",
+        },
+      ],
+    },
+  ],
+  navSecondary: [
+    {
+      title: "Support",
+      url: "#",
+      icon: LifeBuoy,
+    },
+    {
+      title: "Feedback",
+      url: "#",
+      icon: Send,
     },
   ],
   projects: [
@@ -112,6 +139,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <NavProjects projects={data.projects} />
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
