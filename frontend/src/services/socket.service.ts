@@ -29,7 +29,12 @@ class SocketService {
         return;
       }
 
-      this.socket = io(`${process.env.VITE_API_URL || 'http://localhost:3000'}/auth`, {
+      // Get the base URL from environment variable, remove /api suffix and add /auth namespace
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const baseUrl = apiUrl.replace('/api', '');
+      const socketUrl = `${baseUrl}/auth`;
+
+      this.socket = io(socketUrl, {
         auth: {
           token,
         },

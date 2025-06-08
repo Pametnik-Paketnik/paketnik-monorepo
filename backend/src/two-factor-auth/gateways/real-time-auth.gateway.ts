@@ -19,7 +19,7 @@ interface AuthenticatedSocket extends Socket {
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: true, // Allow all origins for development
     credentials: true,
   },
   namespace: '/auth',
@@ -37,11 +37,13 @@ export class RealTimeAuthGateway implements OnGatewayConnection, OnGatewayDiscon
   ) {}
 
   async handleConnection(client: AuthenticatedSocket) {
+    this.logger.log(`🔄 WebSocket connection attempt from ${client.handshake.address}`);
+    
     try {
       const token = client.handshake.auth?.token || client.handshake.headers?.authorization?.replace('Bearer ', '');
       
       if (!token) {
-        this.logger.warn(`Client ${client.id} connected without token`);
+        this.logger.warn(`❌ Client ${client.id} connected without token`);
         client.disconnect();
         return;
       }
@@ -50,11 +52,11 @@ export class RealTimeAuthGateway implements OnGatewayConnection, OnGatewayDiscon
       client.userId = payload.sub;
       
       this.connectionMap.set(client.id, client);
-      this.logger.log(`Client ${client.id} connected for user ${client.userId}`);
+      this.logger.log(`✅ Client ${client.id} connected for user ${client.userId}`);
       
       client.emit('connected', { userId: client.userId });
     } catch (error) {
-      this.logger.warn(`Invalid token for client ${client.id}: ${error.message}`);
+      this.logger.warn(`❌ Invalid token for client ${client.id}: ${error.message}`);
       client.disconnect();
     }
   }
