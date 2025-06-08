@@ -10,11 +10,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TokenBlacklistService } from './services/token-blacklist.service';
+import { TwoFactorAuthModule } from '../two-factor-auth/two-factor-auth.module';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
+    TwoFactorAuthModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

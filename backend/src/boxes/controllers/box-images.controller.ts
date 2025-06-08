@@ -29,7 +29,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('Box Images')
 @ApiBearerAuth('access-token')
-@Controller('boxes/:boxId/images')
+@Controller('api/boxes/:boxId/images')
 @UseGuards(JwtAuthGuard)
 export class BoxImagesController {
   constructor(private readonly boxImagesService: BoxImagesService) {}

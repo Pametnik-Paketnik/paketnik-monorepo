@@ -28,7 +28,7 @@ import { Reservation } from './entities/reservation.entity';
 
 @ApiTags('reservations')
 @ApiBearerAuth('access-token')
-@Controller('reservations')
+@Controller('api/reservations')
 @UseGuards(JwtAuthGuard)
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}

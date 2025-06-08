@@ -32,7 +32,7 @@ interface RequestWithUser extends Request {
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
-@Controller('users')
+@Controller('api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

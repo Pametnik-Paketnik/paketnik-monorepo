@@ -11,6 +11,7 @@ import { BoxesModule } from './boxes/boxes.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { StorageModule } from './storage/storage.module';
 import { FaceAuthModule } from './face-auth/face-auth.module';
+import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { FaceAuthModule } from './face-auth/face-auth.module';
     UsersModule,
     AuthModule,
     FaceAuthModule,
+    TwoFactorAuthModule,
     BoxesModule,
     ReservationsModule,
   ],

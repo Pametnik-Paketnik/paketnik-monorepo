@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
+import { WaitingForApproval } from "@/components/auth/WaitingForApproval";
+import { toast } from "sonner";
 
 type AuthFormProps = React.ComponentProps<"div"> & {
   mode: "login" | "register";
@@ -29,6 +31,12 @@ export function AuthForm({ className, mode, ...props }: AuthFormProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // 2FA state
+  const [pendingAuth, setPendingAuth] = useState<{
+    pendingAuthId: string;
+    expiresAt: Date;
+  } | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +51,7 @@ export function AuthForm({ className, mode, ...props }: AuthFormProps) {
 
     // Determine URL and method
     const url = isLogin
-      ? `${import.meta.env.VITE_API_URL}/auth/login`
+      ? `${import.meta.env.VITE_API_URL}/auth/login-2fa`
       : `${import.meta.env.VITE_API_URL}/auth/register`;
 
     try {
@@ -62,22 +70,34 @@ export function AuthForm({ className, mode, ...props }: AuthFormProps) {
 
       const data = await res.json();
 
-      if (data.success) {
+      // Handle 2FA flow for login
+      if (isLogin && data.requiresApproval) {
+        setPendingAuth({
+          pendingAuthId: data.pendingAuthId,
+          expiresAt: new Date(data.expiresAt),
+        });
+        toast.success("📱 Check your mobile device to approve the login");
+        return;
+      }
+
+      // Handle successful authentication (no 2FA required or registration)
+      if (data.success || data.access_token) {
         // For login, check user type before storing credentials
-        if (isLogin) {
+        if (isLogin && data.user) {
           if (data.user.userType !== "HOST") {
             throw new Error("Access denied. Only HOST users can access the dashboard.");
           }
         }
         
-        // Dispatch to redux store (only for HOST users during login, or for registration)
+        // Dispatch to redux store
         dispatch(
           setCredentials({
             user: data.user,
             accessToken: data.access_token,
           })
         );
-        // Redirect to home page after successful registration or login
+        
+        toast.success(isLogin ? "Login successful!" : "Account created successfully!");
         navigate('/');
       } else {
         throw new Error(data.message || "Authentication failed");
@@ -87,6 +107,52 @@ export function AuthForm({ className, mode, ...props }: AuthFormProps) {
     } finally {
       setLoading(false);
     }
+  }
+
+  // 2FA handlers
+  const handleApproved = (tokens: { access_token: string; refresh_token: string }) => {
+    // Get user info from token or make another API call
+    // For now, we'll just store tokens and redirect
+    dispatch(
+      setCredentials({
+        user: null, // You might need to decode the JWT or make an API call to get user info
+        accessToken: tokens.access_token,
+      })
+    );
+    setPendingAuth(null);
+    toast.success("🎉 Login approved! Welcome back!");
+    navigate('/');
+  };
+
+  const handleDenied = () => {
+    setPendingAuth(null);
+    setError("Login was denied from your mobile device");
+    toast.error("❌ Login denied");
+  };
+
+  const handleExpired = () => {
+    setPendingAuth(null);
+    setError("Login request expired. Please try again.");
+    toast.error("⏰ Login request expired");
+  };
+
+  const handleCancel = () => {
+    setPendingAuth(null);
+    setError(null);
+  };
+
+  // Show 2FA waiting screen if pending auth
+  if (pendingAuth) {
+    return (
+      <WaitingForApproval
+        pendingAuthId={pendingAuth.pendingAuthId}
+        expiresAt={pendingAuth.expiresAt}
+        onApproved={handleApproved}
+        onDenied={handleDenied}
+        onExpired={handleExpired}
+        onCancel={handleCancel}
+      />
+    );
   }
 
   return (

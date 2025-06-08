@@ -37,7 +37,7 @@ interface RequestWithUser extends Request {
 
 @ApiTags('boxes')
 @ApiBearerAuth('access-token')
-@Controller('boxes')
+@Controller('api/boxes')
 @UseGuards(JwtAuthGuard)
 export class BoxesController {
   constructor(

@@ -31,4 +31,9 @@ export const envValidationSchema = Joi.object({
   // Face Auth microservice
   FACE_AUTH_SERVICE_URL: Joi.string().required(),
   FACE_AUTH_TIMEOUT: Joi.number().default(30000),
+
+  // Firebase Admin SDK
+  FIREBASE_PROJECT_ID: Joi.string().required(),
+  FIREBASE_PRIVATE_KEY: Joi.string().required(),
+  FIREBASE_CLIENT_EMAIL: Joi.string().required(),
 });

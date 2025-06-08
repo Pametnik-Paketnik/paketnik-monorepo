@@ -19,8 +19,8 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
-  // global prefix for all routes
-  app.setGlobalPrefix('api');
+  // global prefix for all routes - disabled since frontend already includes /api in VITE_API_URL
+  // app.setGlobalPrefix('api');
 
   // Enable validation
   app.useGlobalPipes(

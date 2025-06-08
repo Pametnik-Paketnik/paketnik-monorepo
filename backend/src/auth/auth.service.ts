@@ -104,4 +104,22 @@ export class AuthService {
   validate(payload: { sub: number; username: string }) {
     return { userId: payload.sub, username: payload.username };
   }
+
+  async validateCredentials(username: string, password: string) {
+    try {
+      // Find user by username
+      const user = await this.usersService.findByUsername(username);
+
+      // Compare passwords
+      const isPasswordValid = await compare(password, user.hashedPassword);
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      return user;
+    } catch (error) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+  }
 }

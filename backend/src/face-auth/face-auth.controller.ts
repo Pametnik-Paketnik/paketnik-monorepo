@@ -33,7 +33,7 @@ interface RequestWithUser extends Request {
 }
 
 @ApiTags('Face Authentication')
-@Controller('face-auth')
+@Controller('api/face-auth')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('access-token')
 export class FaceAuthController {
