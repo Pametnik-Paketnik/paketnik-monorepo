@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
+          
       - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
@@ -43,15 +43,22 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
-
+            
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # - name: Run linter
-      #   run: pnpm lint
+      - name: Run linter
+        run: pnpm lint
+        continue-on-error: true  # Dodajte če linter ni kritičen
 
-      # - name: Build application
-      #   run: pnpm build
+      - name: Run tests
+        run: pnpm test
+        env:
+          CI: true
+          NODE_ENV: test
+
+      - name: Build application
+        run: pnpm build
 
       - name: Set up Docker Buildx
         if: github.event_name == 'push'
@@ -75,7 +82,7 @@ jobs:
             type=ref,event=pr
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-
+            
       - name: Build and push Docker image
         if: github.event_name == 'push'
         uses: docker/build-push-action@v5
@@ -113,7 +120,7 @@ jobs:
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
+          
       - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
@@ -121,15 +128,18 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
-
+            
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run linter
         run: pnpm lint
 
-      # - name: Run tests
-      #   run: pnpm test
+      - name: Run tests
+        run: pnpm test
+        env:
+          CI: true
+          NODE_ENV: test
 
       - name: Build application
         run: pnpm build
@@ -156,7 +166,7 @@ jobs:
             type=ref,event=pr
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-
+            
       - name: Build and push Docker image
         if: github.event_name == 'push'
         uses: docker/build-push-action@v5
@@ -192,24 +202,25 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-
+            
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest flake8
-
+          
       - name: Run linter
         run: flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Run tests (if available)
+      - name: Run tests
         run: |
           if [ -d "testing" ]; then
-            python -m pytest testing/ -v || echo "No tests found or tests failed"
+            python -m pytest testing/ -v
           else
-            echo "No test directory found"
+            echo "No test directory found - skipping tests"
           fi
-
+        continue-on-error: true  # Če testi niso kritični
+        
       - name: Set up Docker Buildx
         if: github.event_name == 'push'
         uses: docker/setup-buildx-action@v3
@@ -232,7 +243,7 @@ jobs:
             type=ref,event=pr
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-
+            
       - name: Build and push Docker image
         if: github.event_name == 'push'
         uses: docker/build-push-action@v5
@@ -245,7 +256,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Deployment notification (optional)
+  # Deployment notification
   notify-deployment:
     needs: [frontend, backend, face-auth-service]
     runs-on: ubuntu-latest
@@ -257,4 +268,4 @@ jobs:
           echo "🚀 All services have been successfully built and pushed to Docker Hub!"
           echo "Frontend: ${{ secrets.DOCKER_USERNAME }}/paketnik-frontend:latest"
           echo "Backend: ${{ secrets.DOCKER_USERNAME }}/paketnik-backend:latest"
-          echo "Face Auth: ${{ secrets.DOCKER_USERNAME }}/paketnik-face-auth:latest" 
+          echo "Face Auth: ${{ secrets.DOCKER_USERNAME }}/paketnik-face-auth:latest"
