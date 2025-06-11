@@ -133,6 +133,13 @@ export default function ReservationsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   // Helper function to safely format price
+  const calculateNightsAndPrice = (checkinAt: string, checkoutAt: string, pricePerNight: number | string) => {
+    const nights = Math.ceil((new Date(checkoutAt).getTime() - new Date(checkinAt).getTime()) / (1000 * 60 * 60 * 24))
+    const price = typeof pricePerNight === 'string' ? parseFloat(pricePerNight) : pricePerNight
+    const totalPrice = nights * price
+    return { nights, totalPrice }
+  }
+
   const formatPrice = (price: number | string | undefined): string => {
     if (!price) return '0.00'
     const numPrice = typeof price === 'string' ? parseFloat(price) : price
@@ -675,7 +682,9 @@ export default function ReservationsPage() {
                       <div className="ml-6">
                         <div className="flex justify-between">
                           <span className="text-sm text-muted-foreground">Total Price:</span>
-                          <span className="text-sm font-medium text-green-600">${formatPrice(reservation.totalPrice)}</span>
+                          <span className="text-sm font-medium text-green-600">
+                            ${formatPrice(calculateNightsAndPrice(reservation.checkinAt, reservation.checkoutAt, reservation.box.pricePerNight).totalPrice)}
+                          </span>
                         </div>
                       </div>
                     </div>

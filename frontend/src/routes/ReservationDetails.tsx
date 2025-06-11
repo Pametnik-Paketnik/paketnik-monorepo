@@ -5,7 +5,11 @@ import type { RootState } from '@/store'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, User, Calendar, DollarSign, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { MapPin, User, Calendar, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Edit, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
 
 // User type enum to match backend
 enum UserType {
@@ -23,18 +27,20 @@ enum ReservationStatus {
 
 interface User {
   id: number
-  username: string
+  name: string
+  surname: string
+  email: string
   userType: UserType
+  totpEnabled: boolean
+  faceEnabled: boolean
   createdAt: string
   updatedAt: string
 }
 
 interface Box {
-  id: string
   boxId: string
   location: string | null
   pricePerNight: string | number
-  owner: User
 }
 
 interface Reservation {
@@ -54,9 +60,19 @@ export default function ReservationDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const token = useSelector((state: RootState) => state.auth.accessToken)
+  const user = useSelector((state: RootState) => state.auth.user)
   const [reservation, setReservation] = useState<Reservation | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isBoxDialogOpen, setIsBoxDialogOpen] = useState(false)
+  const [availableBoxes, setAvailableBoxes] = useState<Box[]>([])
+  const [selectedBoxId, setSelectedBoxId] = useState<string>('')
+  const [editedDates, setEditedDates] = useState({
+    checkinAt: '',
+    checkoutAt: '',
+  })
 
   useEffect(() => {
     const fetchReservation = async () => {
@@ -89,6 +105,16 @@ export default function ReservationDetailsPage() {
 
     fetchReservation()
   }, [id, token])
+
+  // Initialize edit form with current reservation dates when dialog opens
+  useEffect(() => {
+    if (reservation && isEditDialogOpen) {
+      setEditedDates({
+        checkinAt: new Date(reservation.checkinAt).toISOString().slice(0, 16),
+        checkoutAt: new Date(reservation.checkoutAt).toISOString().slice(0, 16),
+      })
+    }
+  }, [reservation, isEditDialogOpen])
 
   const getStatusIcon = (status: ReservationStatus) => {
     switch (status) {
@@ -124,6 +150,199 @@ export default function ReservationDetailsPage() {
     if (!price) return '0.00'
     const numPrice = typeof price === 'string' ? parseFloat(price) : price
     return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2)
+  }
+
+  const isHost = user?.userType === UserType.HOST
+
+  const calculateNightsAndPrice = (checkinAt: string, checkoutAt: string, pricePerNight: number | string) => {
+    const nights = Math.ceil((new Date(checkoutAt).getTime() - new Date(checkinAt).getTime()) / (1000 * 60 * 60 * 24))
+    const price = typeof pricePerNight === 'string' ? parseFloat(pricePerNight) : pricePerNight
+    const totalPrice = nights * price
+    return { nights, totalPrice }
+  }
+
+  const handleEditReservation = async () => {
+    if (!id || !token || !reservation) return
+
+    try {
+      // Validate dates
+      if (!editedDates.checkinAt || !editedDates.checkoutAt) {
+        toast.error('Please select both check-in and check-out dates')
+        return
+      }
+
+      const checkinDate = new Date(editedDates.checkinAt)
+      const checkoutDate = new Date(editedDates.checkoutAt)
+
+      if (checkinDate >= checkoutDate) {
+        toast.error('Check-out date must be after check-in date')
+        return
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/reservations/${id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          checkinAt: editedDates.checkinAt,
+          checkoutAt: editedDates.checkoutAt,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to update reservation')
+      }
+
+      const updatedReservation = await response.json()
+
+      // Recalculate total price after update
+      const { totalPrice } = calculateNightsAndPrice(updatedReservation.checkinAt, updatedReservation.checkoutAt, updatedReservation.box.pricePerNight)
+
+      // Update the reservation with the calculated price
+      setReservation({
+        ...updatedReservation,
+        totalPrice,
+      })
+
+      setIsEditDialogOpen(false)
+      toast.success('Reservation updated successfully')
+    } catch (err) {
+      console.error('Error updating reservation:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to update reservation')
+    }
+  }
+
+  const handleDeleteReservation = async () => {
+    if (!id || !token) return
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/reservations/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete reservation')
+      }
+
+      toast.success('Reservation deleted successfully')
+      navigate('/reservations')
+    } catch (err) {
+      console.error('Error deleting reservation:', err)
+      toast.error('Failed to delete reservation')
+    }
+  }
+
+  const handleStatusChange = async (newStatus: ReservationStatus) => {
+    if (!id || !token) return
+
+    try {
+      let response
+      if (newStatus === ReservationStatus.CANCELLED) {
+        // Use the cancel endpoint
+        response = await fetch(`${import.meta.env.VITE_API_URL}/reservations/cancel`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reservationId: parseInt(id, 10) }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null)
+          throw new Error(errorData?.message || 'Failed to cancel reservation')
+        }
+      } else {
+        // Use the status endpoint for other status changes
+        response = await fetch(`${import.meta.env.VITE_API_URL}/reservations/${id}/status`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null)
+          throw new Error(errorData?.message || 'Failed to update reservation status')
+        }
+      }
+
+      const updatedReservation = await response.json()
+      setReservation(updatedReservation)
+      toast.success(newStatus === ReservationStatus.CANCELLED ? 'Reservation cancelled successfully' : 'Reservation status updated successfully')
+    } catch (err) {
+      console.error('Error updating reservation status:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to update reservation status')
+    }
+  }
+
+  // Add function to fetch available boxes
+  const fetchAvailableBoxes = async () => {
+    if (!token) return
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/boxes`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch boxes')
+      }
+
+      const data = await response.json()
+      setAvailableBoxes(data)
+    } catch (err) {
+      console.error('Error fetching boxes:', err)
+      toast.error('Failed to fetch available boxes')
+    }
+  }
+
+  // Add function to handle box change
+  const handleBoxChange = async () => {
+    if (!id || !token || !selectedBoxId) return
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/reservations/${id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ boxId: selectedBoxId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to update box')
+      }
+
+      const updatedReservation = await response.json()
+
+      // Recalculate total price after box change
+      const { totalPrice } = calculateNightsAndPrice(updatedReservation.checkinAt, updatedReservation.checkoutAt, updatedReservation.box.pricePerNight)
+
+      // Update the reservation with the calculated price
+      setReservation({
+        ...updatedReservation,
+        totalPrice,
+      })
+
+      setIsBoxDialogOpen(false)
+      toast.success('Box updated successfully')
+    } catch (err) {
+      console.error('Error updating box:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to update box')
+    }
   }
 
   if (loading) {
@@ -162,9 +381,128 @@ export default function ReservationDetailsPage() {
               {reservation.status}
             </Badge>
           </div>
-          <Button variant="outline" onClick={() => navigate('/reservations')}>
-            Back to Reservations
-          </Button>
+          <div className="flex gap-2">
+            {isHost && (
+              <>
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <Edit className="h-4 w-4" />
+                      Edit Dates
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Edit Reservation Dates</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="checkin">Check-in Date</Label>
+                        <Input
+                          id="checkin"
+                          type="datetime-local"
+                          value={editedDates.checkinAt}
+                          onChange={(e) => setEditedDates((prev) => ({ ...prev, checkinAt: e.target.value }))}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="checkout">Check-out Date</Label>
+                        <Input
+                          id="checkout"
+                          type="datetime-local"
+                          value={editedDates.checkoutAt}
+                          onChange={(e) => setEditedDates((prev) => ({ ...prev, checkoutAt: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleEditReservation}>Save Changes</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={isBoxDialogOpen} onOpenChange={setIsBoxDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2" onClick={fetchAvailableBoxes}>
+                      <MapPin className="h-4 w-4" />
+                      Change Box
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Change Box</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="box">Select Box</Label>
+                        <select
+                          id="box"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          value={selectedBoxId}
+                          onChange={(e) => setSelectedBoxId(e.target.value)}
+                        >
+                          <option value="">Select a box</option>
+                          {availableBoxes.map((box) => (
+                            <option key={box.boxId} value={box.boxId}>
+                              Box {box.boxId} - {box.location || 'No location'} (${formatPrice(box.pricePerNight)}/night)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsBoxDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleBoxChange} disabled={!selectedBoxId}>
+                        Change Box
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Reservation</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">Are you sure you want to delete this reservation? This action cannot be undone.</div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button variant="destructive" onClick={handleDeleteReservation}>
+                        Delete
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {reservation.status === ReservationStatus.CHECKED_IN && (
+                  <Button variant="default" onClick={() => handleStatusChange(ReservationStatus.CHECKED_OUT)}>
+                    Check Out
+                  </Button>
+                )}
+                {reservation.status === ReservationStatus.PENDING && (
+                  <Button variant="destructive" onClick={() => handleStatusChange(ReservationStatus.CANCELLED)}>
+                    Cancel
+                  </Button>
+                )}
+              </>
+            )}
+            <Button variant="outline" onClick={() => navigate('/reservations')}>
+              Back to Reservations
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -190,10 +528,6 @@ export default function ReservationDetailsPage() {
                   <div className="font-medium text-sm">Price per Night</div>
                   <div className="text-sm text-muted-foreground">${formatPrice(reservation.box.pricePerNight)}</div>
                 </div>
-                <div>
-                  <div className="font-medium text-sm">Box Owner</div>
-                  <div className="text-sm text-muted-foreground">{reservation.box.owner?.username || 'Unknown'}</div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -211,13 +545,13 @@ export default function ReservationDetailsPage() {
                 <div>
                   <div className="font-medium text-sm">Guest</div>
                   <div className="text-sm text-muted-foreground">
-                    {reservation.guest?.username || 'Unknown'} (ID: {reservation.guest?.id || 'Unknown'})
+                    {reservation.guest?.name} {reservation.guest?.surname} (ID: {reservation.guest?.id})
                   </div>
                 </div>
                 <div>
                   <div className="font-medium text-sm">Host</div>
                   <div className="text-sm text-muted-foreground">
-                    {reservation.host?.username || 'Unknown'} (ID: {reservation.host?.id || 'Unknown'})
+                    {reservation.host?.name} {reservation.host?.surname} (ID: {reservation.host?.id})
                   </div>
                 </div>
               </div>
@@ -259,30 +593,30 @@ export default function ReservationDetailsPage() {
           </Card>
 
           {/* Financial */}
-          {reservation.totalPrice && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Financial
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="font-medium text-sm">Total Price</div>
-                    <div className="text-lg font-semibold text-green-600">${formatPrice(reservation.totalPrice)}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Nights</div>
-                    <div className="text-sm text-muted-foreground">
-                      {Math.ceil((new Date(reservation.checkoutAt).getTime() - new Date(reservation.checkinAt).getTime()) / (1000 * 60 * 60 * 24))}
-                    </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Financial
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="font-medium text-sm">Total Price</div>
+                  <div className="text-lg font-semibold text-green-600">
+                    ${formatPrice(calculateNightsAndPrice(reservation.checkinAt, reservation.checkoutAt, reservation.box.pricePerNight).totalPrice)}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div>
+                  <div className="font-medium text-sm">Nights</div>
+                  <div className="text-sm text-muted-foreground">
+                    {calculateNightsAndPrice(reservation.checkinAt, reservation.checkoutAt, reservation.box.pricePerNight).nights}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
