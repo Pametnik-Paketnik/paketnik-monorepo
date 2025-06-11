@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchBoxes } from '@/store/boxesSlice'
 import type { RootState, AppDispatch } from '@/store'
-import { apiPatch, apiPostFormData, apiDelete } from '@/lib/api'
+import { apiPatch, apiPostFormData, apiDelete, apiGet } from '@/lib/api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Plus, ArrowLeft } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface BoxImage {
   id: number
@@ -31,6 +33,18 @@ interface Box {
   images?: BoxImage[]
 }
 
+interface BoxOpeningHistory {
+  user: {
+    id: number
+    username: string
+    userType: string
+  }
+  boxId: string
+  timestamp: string
+  status: string
+  tokenFormat: number
+}
+
 export default function BoxDetailsPage() {
   const { boxId } = useParams<{ boxId: string }>()
   const navigate = useNavigate()
@@ -42,6 +56,8 @@ export default function BoxDetailsPage() {
   const [newEditImages, setNewEditImages] = useState<File[]>([])
   const [newEditPreviews, setNewEditPreviews] = useState<string[]>([])
   const [imagesToDelete, setImagesToDelete] = useState<number[]>([])
+  const [openingHistory, setOpeningHistory] = useState<BoxOpeningHistory[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   useEffect(() => {
     dispatch(fetchBoxes())
@@ -58,6 +74,28 @@ export default function BoxDetailsPage() {
       }
     }
   }, [items, boxId, navigate])
+
+  useEffect(() => {
+    const fetchOpeningHistory = async () => {
+      if (!editingBox?.boxId) return
+
+      setLoadingHistory(true)
+      try {
+        const response = await apiGet(`${import.meta.env.VITE_API_URL}/boxes/${editingBox.boxId}/opening-history`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch opening history')
+        }
+        const data = await response.json()
+        setOpeningHistory(data)
+      } catch (error) {
+        console.error('Error fetching opening history:', error)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+
+    fetchOpeningHistory()
+  }, [editingBox?.boxId])
 
   const handleUpdateBox = async () => {
     if (!user?.id || !editingBox) {
@@ -145,6 +183,11 @@ export default function BoxDetailsPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const getStatusBadge = (status: string) => {
+    const variant = status === 'success' ? 'default' : 'destructive'
+    return <Badge variant={variant}>{status}</Badge>
   }
 
   if (!editingBox) {
@@ -288,6 +331,61 @@ export default function BoxDetailsPage() {
                   placeholder="Enter price per night"
                 />
               </div>
+            </div>
+          </Card>
+
+          {/* Box Opening History */}
+          <Card className="p-4">
+            <div className="grid gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Opening History</h2>
+                <div className="text-sm text-muted-foreground">{openingHistory.length} records</div>
+              </div>
+
+              {loadingHistory ? (
+                <div className="text-center py-4">
+                  <div className="text-sm text-muted-foreground">Loading opening history...</div>
+                </div>
+              ) : openingHistory.length === 0 ? (
+                <div className="text-center py-4">
+                  <div className="text-sm text-muted-foreground">No opening history found</div>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>User Type</TableHead>
+                      <TableHead>Timestamp</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Token Format</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {openingHistory.map((item, index) => (
+                      <TableRow key={`${item.boxId}-${item.user.id}-${item.timestamp}-${index}`}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.user.username}</div>
+                            <div className="text-sm text-muted-foreground">ID: {item.user.id}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{item.user.userType}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{new Date(item.timestamp).toLocaleDateString()}</div>
+                            <div className="text-sm text-muted-foreground">{new Date(item.timestamp).toLocaleTimeString()}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                        <TableCell>{item.tokenFormat}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           </Card>
 
