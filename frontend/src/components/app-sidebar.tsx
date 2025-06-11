@@ -1,83 +1,32 @@
-import * as React from "react"
-import {
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  LifeBuoy,
-  Map,
-  PieChart,
-  Send,
-  Settings2,
-  SquareTerminal,
-  House,
-  History
-} from "lucide-react"
-import { useSelector } from "react-redux"
-import type { RootState } from "@/store"
+import * as React from 'react'
+import { BookOpen, Bot, Command, House } from 'lucide-react'
+import { useSelector } from 'react-redux'
+import type { RootState } from '@/store'
 
-import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
+import { NavMain } from '@/components/nav-main'
+import { NavUser } from '@/components/nav-user'
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 
 const data = {
-  user: {
-    name: "username",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
-      title: "Domov",
-      url: "/",
+      title: 'Home',
+      url: '/',
       icon: House,
       isActive: true,
       items: [],
     },
     {
-      title: "Paketniki",
-      url: "/boxes",
+      title: 'Boxes',
+      url: '/boxes',
       icon: BookOpen,
       items: [],
     },
     {
-      title: "Rezervacije",
-      url: "/reservations",
+      title: 'Reservations',
+      url: '/reservations',
       icon: Bot,
       items: [],
-    },
-    {
-      title: "Zgodovina odprtij",
-      url: "/box-opening-history",
-      icon: History,
-      items: [],
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
     },
   ],
 }
@@ -86,9 +35,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useSelector((state: RootState) => state.auth.user)
 
   const userData = {
-    name: user?.username || "Guest",
-    email: user?.userType || "Not logged in",
-    avatar: "/avatars/shadcn.jpg",
+    name: user?.name || 'Guest',
+    email: user?.userType || 'Not logged in',
+    avatar: '/avatars/shadcn.jpg',
   }
 
   return (
@@ -102,8 +51,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Command className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Pametni paketnik</span>
-                  <span className="truncate text-xs">Opis</span>
+                  <span className="truncate font-medium">Smart Locker</span>
+                  <span className="truncate text-xs">Description</span>
                 </div>
               </a>
             </SidebarMenuButton>
