@@ -81,7 +81,9 @@ export default function BoxDetailsPage() {
 
       setLoadingHistory(true)
       try {
-        const response = await apiGet(`${import.meta.env.VITE_API_URL}/boxes/${editingBox.boxId}/opening-history`)
+        // Remove 'BOX' prefix for backend
+        const numericBoxId = editingBox.boxId.replace(/^BOX/, '')
+        const response = await apiGet(`${import.meta.env.VITE_API_URL}/boxes/opening-history/box/${numericBoxId}`)
         if (!response.ok) {
           throw new Error('Failed to fetch opening history')
         }
