@@ -237,7 +237,7 @@ export default function BoxesPage() {
               return (
                 <Card
                   key={`box-${box.boxId}`}
-                  className="flex flex-col overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                  className="flex flex-col overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 py-0"
                   onClick={() => navigate(`/boxes/${box.boxId}`)}
                 >
                   {/* Image Section */}

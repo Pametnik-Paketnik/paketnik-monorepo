@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, Bot, Command, House } from 'lucide-react'
+import { BookOpen, Bot, House } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/store'
 
@@ -48,11 +48,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton size="lg" asChild>
               <a href="#">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Command className="size-4" />
+                  <img src="/AirbnbLogo.svg" alt="Airbox Logo" className="size-6" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Smart Locker</span>
-                  <span className="truncate text-xs">Description</span>
+                  <span className="truncate font-medium">Airbox</span>
+                  <span className="truncate text-xs">Your stuff, sorted</span>
                 </div>
               </a>
             </SidebarMenuButton>
