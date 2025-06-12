@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, Bot, House } from 'lucide-react'
+import { BookOpen, BrushCleaning, House, Box, Archive } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/store'
 
@@ -19,19 +19,25 @@ const data = {
     {
       title: 'Boxes',
       url: '/boxes',
-      icon: BookOpen,
+      icon: Box,
       items: [],
     },
     {
       title: 'Reservations',
       url: '/reservations',
-      icon: Bot,
+      icon: BookOpen,
       items: [],
     },
     {
       title: 'Inventory',
       url: '/inventory',
-      icon: BookOpen,
+      icon: Archive,
+      items: [],
+    },
+    {
+      title: 'Cleaners',
+      url: '/cleaners',
+      icon: BrushCleaning,
       items: [],
     },
   ],

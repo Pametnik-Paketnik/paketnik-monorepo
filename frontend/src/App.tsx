@@ -15,6 +15,8 @@ import ReservationDetailsPage from './routes/ReservationDetails'
 import InventoryListPage from './routes/InventoryList'
 import InventoryDetailsPage from './routes/InventoryDetails'
 import AddInventoryItemPage from './routes/AddInventoryItem'
+import CleanersListPage from './routes/CleanersList'
+import CleanerDetailsPage from './routes/CleanerDetails'
 
 export default function App() {
   return (
@@ -42,6 +44,9 @@ export default function App() {
         <Route path="inventory" element={<InventoryListPage />} />
         <Route path="inventory/add" element={<AddInventoryItemPage />} />
         <Route path="inventory/:id" element={<InventoryDetailsPage />} />
+        <Route path="cleaners" element={<CleanersListPage />} />
+        <Route path="cleaners/add" element={<CleanerDetailsPage isAdd={true} />} />
+        <Route path="cleaners/:id" element={<CleanerDetailsPage />} />
       </Route>
 
       {/* Catch-all route - redirect any undefined routes to login */}
