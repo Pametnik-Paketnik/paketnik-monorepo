@@ -246,7 +246,7 @@ export default function BoxesPage() {
                       <>
                         <img
                           src={`http://${primaryImage.imageUrl}`}
-                          alt={`Box ${box.boxId}`}
+                          alt={`Properties ${box.boxId}`}
                           className="w-full h-full object-cover rounded-t-lg"
                           onError={(e) => {
                             // Hide image if failed to load
@@ -268,7 +268,7 @@ export default function BoxesPage() {
                   </div>
 
                   <div className="p-4 flex-1">
-                    <h3 className="text-lg font-semibold mb-3">Box {box.boxId}</h3>
+                    <h3 className="text-lg font-semibold mb-3">Properties {box.boxId}</h3>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Location:</span>
