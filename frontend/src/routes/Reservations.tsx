@@ -6,7 +6,6 @@ import type { RootState, AppDispatch } from '@/store'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Plus, User, MapPin, Calendar, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Filter } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -149,7 +148,20 @@ export default function ReservationsPage() {
   }
 
   // Helper function to map reservation status to filter status
-  const getFilterStatus = (status: ReservationStatus): StatusFilter => {
+  const getFilterStatus = (status: ReservationStatus, checkoutAt: string): StatusFilter => {
+    const now = new Date()
+    const checkoutDate = new Date(checkoutAt)
+
+    // If the checkout date has passed and status is CHECKED_OUT, it's completed
+    if (checkoutDate < now && status === ReservationStatus.CHECKED_OUT) {
+      return 'CHECKOUT'
+    }
+
+    // If checkout date has passed but not checked out, it's still pending
+    if (checkoutDate < now && status !== ReservationStatus.CHECKED_OUT && status !== ReservationStatus.CANCELLED) {
+      return 'UPCOMMING'
+    }
+
     switch (status) {
       case ReservationStatus.PENDING:
         return 'UPCOMMING'
@@ -172,7 +184,7 @@ export default function ReservationsPage() {
       case 'CHECKIN':
         return 'Active'
       case 'CHECKOUT':
-        return 'Past'
+        return 'Completed'
       case 'CANCELED':
         return 'Canceled'
       default:
@@ -184,7 +196,7 @@ export default function ReservationsPage() {
   const applyFilters = (reservations: Reservation[]): Reservation[] => {
     return reservations.filter((reservation) => {
       // Status filter
-      if (filters.status !== 'ALL' && getFilterStatus(reservation.status) !== filters.status) {
+      if (filters.status !== 'ALL' && getFilterStatus(reservation.status, reservation.checkoutAt) !== filters.status) {
         return false
       }
 
@@ -231,7 +243,7 @@ export default function ReservationsPage() {
     }
 
     reservations.forEach((reservation) => {
-      const filterStatus = getFilterStatus(reservation.status)
+      const filterStatus = getFilterStatus(reservation.status, reservation.checkoutAt)
       counts[filterStatus]++
     })
 
@@ -298,14 +310,18 @@ export default function ReservationsPage() {
     fetchBoxAvailability(boxId)
   }
 
-  const getStatusIcon = (status: ReservationStatus) => {
+  const getStatusIcon = (status: ReservationStatus, checkoutAt: string) => {
+    const now = new Date()
+    const checkoutDate = new Date(checkoutAt)
+    const isCompleted = checkoutDate < now && status === ReservationStatus.CHECKED_OUT
+
     switch (status) {
       case ReservationStatus.PENDING:
         return <Clock className="h-4 w-4" />
       case ReservationStatus.CHECKED_IN:
         return <CheckCircle className="h-4 w-4 text-blue-500" />
       case ReservationStatus.CHECKED_OUT:
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className={`h-4 w-4 ${isCompleted ? 'text-white' : 'text-green-500'}`} />
       case ReservationStatus.CANCELLED:
         return <XCircle className="h-4 w-4 text-red-500" />
       default:
@@ -313,14 +329,18 @@ export default function ReservationsPage() {
     }
   }
 
-  const getStatusColor = (status: ReservationStatus) => {
+  const getStatusColor = (status: ReservationStatus, checkoutAt: string) => {
+    const now = new Date()
+    const checkoutDate = new Date(checkoutAt)
+    const isCompleted = checkoutDate < now && status === ReservationStatus.CHECKED_OUT
+
     switch (status) {
       case ReservationStatus.PENDING:
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case ReservationStatus.CHECKED_IN:
         return 'bg-blue-100 text-blue-800 border-blue-200'
       case ReservationStatus.CHECKED_OUT:
-        return 'bg-green-100 text-green-800 border-green-200'
+        return isCompleted ? 'bg-green-600 text-white border-green-700' : 'bg-green-100 text-green-800 border-green-200'
       case ReservationStatus.CANCELLED:
         return 'bg-red-100 text-red-800 border-red-200'
       default:
@@ -456,7 +476,9 @@ export default function ReservationsPage() {
         if (!response.ok) throw new Error('Failed to fetch users')
         const data = await response.json()
         setGuestUsers(data)
-      } catch {}
+      } catch (error) {
+        console.error('Error fetching users:', error)
+      }
     }
     if (isAddDialogOpen) fetchGuests()
   }, [isAddDialogOpen, token])
@@ -520,6 +542,7 @@ export default function ReservationsPage() {
                             : status === 'CHECKOUT'
                             ? ReservationStatus.CHECKED_OUT
                             : ReservationStatus.CANCELLED,
+                          new Date().toISOString(),
                         )}
                       {getFilterDisplayName(status)}
                       <Badge variant="secondary" className="ml-1">
@@ -613,9 +636,9 @@ export default function ReservationsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Reservation #{reservation.id}</CardTitle>
-                    <Badge className={`flex items-center gap-1 ${getStatusColor(reservation.status)}`}>
-                      {getStatusIcon(reservation.status)}
-                      {getFilterDisplayName(getFilterStatus(reservation.status))}
+                    <Badge className={`flex items-center gap-1 ${getStatusColor(reservation.status, reservation.checkoutAt)}`}>
+                      {getStatusIcon(reservation.status, reservation.checkoutAt)}
+                      {getFilterDisplayName(getFilterStatus(reservation.status, reservation.checkoutAt))}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -989,8 +1012,8 @@ export default function ReservationsPage() {
                   </div>
                   <div>
                     <div className="font-medium text-sm">Status</div>
-                    <Badge className={`${getStatusColor(selectedReservation.status)} flex items-center gap-1 w-fit`}>
-                      {getStatusIcon(selectedReservation.status)}
+                    <Badge className={`${getStatusColor(selectedReservation.status, selectedReservation.checkoutAt)} flex items-center gap-1 w-fit`}>
+                      {getStatusIcon(selectedReservation.status, selectedReservation.checkoutAt)}
                       {selectedReservation.status}
                     </Badge>
                   </div>

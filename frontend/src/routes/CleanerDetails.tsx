@@ -29,7 +29,7 @@ export default function CleanerDetailsPage({ isAdd = false }: CleanerDetailsPage
   const [cleaner, setCleaner] = useState<Cleaner | null>(null)
   const [loading, setLoading] = useState(!isAdd)
   const [error, setError] = useState<string | null>(null)
-  const [editData, setEditData] = useState({ name: '', surname: '', email: '' })
+  const [editData, setEditData] = useState({ name: '', surname: '', email: '', password: '' })
   const [isEditing, setIsEditing] = useState(isAdd)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -105,6 +105,10 @@ export default function CleanerDetailsPage({ isAdd = false }: CleanerDetailsPage
   }
 
   const handleCreate = async () => {
+    if (!editData.password) {
+      toast.error('Password is required')
+      return
+    }
     setIsSubmitting(true)
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/cleaners`, {
@@ -150,8 +154,14 @@ export default function CleanerDetailsPage({ isAdd = false }: CleanerDetailsPage
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" value={editData.email} onChange={(e) => setEditData((d) => ({ ...d, email: e.target.value }))} />
+                <Input id="email" type="email" value={editData.email} onChange={(e) => setEditData((d) => ({ ...d, email: e.target.value }))} />
               </div>
+              {isAdd && (
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" type="password" value={editData.password} onChange={(e) => setEditData((d) => ({ ...d, password: e.target.value }))} />
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
                   Cancel
