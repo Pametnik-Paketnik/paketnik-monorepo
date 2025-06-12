@@ -12,6 +12,9 @@ import ReservationsPage from './routes/Reservations'
 import BoxOpeningHistoryPage from '@/routes/BoxOpeningHistory'
 import { ProtectedRoute } from './components/protected-route'
 import ReservationDetailsPage from './routes/ReservationDetails'
+import InventoryListPage from './routes/InventoryList'
+import InventoryDetailsPage from './routes/InventoryDetails'
+import AddInventoryItemPage from './routes/AddInventoryItem'
 
 export default function App() {
   return (
@@ -36,6 +39,9 @@ export default function App() {
         <Route path="reservations" element={<ReservationsPage />} />
         <Route path="reservations/:id" element={<ReservationDetailsPage />} />
         <Route path="box-opening-history" element={<BoxOpeningHistoryPage />} />
+        <Route path="inventory" element={<InventoryListPage />} />
+        <Route path="inventory/add" element={<AddInventoryItemPage />} />
+        <Route path="inventory/:id" element={<InventoryDetailsPage />} />
       </Route>
 
       {/* Catch-all route - redirect any undefined routes to login */}

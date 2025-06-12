@@ -196,7 +196,7 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-medium">${typeof reservation.totalPrice === 'number' ? reservation.totalPrice.toFixed(2) : '0.00'}</div>
+                      <div className="font-medium">${reservation.totalPrice ? Number(reservation.totalPrice).toFixed(2) : '0.00'}</div>
                       <div className="text-sm text-muted-foreground">{reservation.status}</div>
                     </div>
                   </div>

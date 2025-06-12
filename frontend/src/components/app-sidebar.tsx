@@ -28,6 +28,12 @@ const data = {
       icon: Bot,
       items: [],
     },
+    {
+      title: 'Inventory',
+      url: '/inventory',
+      icon: BookOpen,
+      items: [],
+    },
   ],
 }
 
