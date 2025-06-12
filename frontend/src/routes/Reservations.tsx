@@ -132,6 +132,8 @@ export default function ReservationsPage() {
   })
   const [showFilters, setShowFilters] = useState(false)
 
+  const [guestUsers, setGuestUsers] = useState<{ id: number; username: string }[]>([])
+
   // Helper function to safely format price
   const calculateNightsAndPrice = (checkinAt: string, checkoutAt: string, pricePerNight: number | string) => {
     const nights = Math.ceil((new Date(checkoutAt).getTime() - new Date(checkinAt).getTime()) / (1000 * 60 * 60 * 24))
@@ -442,6 +444,22 @@ export default function ReservationsPage() {
       }))
     }
   }
+
+  // Fetch guest users when add dialog opens
+  useEffect(() => {
+    const fetchGuests = async () => {
+      if (!token) return
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/users?userType=USER`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) throw new Error('Failed to fetch users')
+        const data = await response.json()
+        setGuestUsers(data)
+      } catch {}
+    }
+    if (isAddDialogOpen) fetchGuests()
+  }, [isAddDialogOpen, token])
 
   return (
     <div key="page-container" className="@container/main flex flex-1 flex-col gap-2 px-4 md:px-6 lg:px-8">
@@ -868,16 +886,21 @@ export default function ReservationsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="guestId" className="text-sm">
-                    Guest ID
+                    Guest
                   </Label>
-                  <Input
-                    id="guestId"
-                    value={newReservationData.guestId}
-                    onChange={(e) => setNewReservationData((prev) => ({ ...prev, guestId: e.target.value }))}
-                    placeholder="Enter the guest's user ID"
-                    className="max-w-md"
-                  />
-                  <p className="text-xs text-muted-foreground">The numeric ID of the guest user who will use this reservation</p>
+                  <Select value={newReservationData.guestId} onValueChange={(value) => setNewReservationData((prev) => ({ ...prev, guestId: value }))}>
+                    <SelectTrigger className="max-w-md">
+                      <SelectValue placeholder="Select a guest..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {guestUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.username} (ID: {user.id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Select the guest user for this reservation</p>
                 </div>
               </div>
             )}

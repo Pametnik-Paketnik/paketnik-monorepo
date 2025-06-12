@@ -18,19 +18,24 @@ interface Cleaner {
   updatedAt: string
 }
 
-export default function CleanerDetailsPage() {
+interface CleanerDetailsPageProps {
+  isAdd?: boolean
+}
+
+export default function CleanerDetailsPage({ isAdd = false }: CleanerDetailsPageProps) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const token = useSelector((state: RootState) => state.auth.accessToken)
   const [cleaner, setCleaner] = useState<Cleaner | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!isAdd)
   const [error, setError] = useState<string | null>(null)
   const [editData, setEditData] = useState({ name: '', surname: '', email: '' })
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(isAdd)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     const fetchCleaner = async () => {
+      if (isAdd) return
       setLoading(true)
       setError(null)
       try {
@@ -50,8 +55,8 @@ export default function CleanerDetailsPage() {
         setLoading(false)
       }
     }
-    if (token) fetchCleaner()
-  }, [id, token])
+    if (token && !isAdd) fetchCleaner()
+  }, [id, token, isAdd])
 
   const handleEdit = async () => {
     if (!cleaner) return
@@ -99,8 +104,29 @@ export default function CleanerDetailsPage() {
     }
   }
 
+  const handleCreate = async () => {
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/cleaners`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editData),
+      })
+      if (!response.ok) throw new Error('Failed to create cleaner')
+      toast.success('Cleaner created successfully')
+      navigate('/cleaners')
+    } catch {
+      toast.error('Failed to create cleaner')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-  if (error || !cleaner) return <div className="flex items-center justify-center min-h-screen text-red-500">{error || 'Cleaner not found'}</div>
+  if (error || (!isAdd && !cleaner)) return <div className="flex items-center justify-center min-h-screen text-red-500">{error || 'Cleaner not found'}</div>
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-2 px-4 md:px-6 lg:px-8">
@@ -109,7 +135,7 @@ export default function CleanerDetailsPage() {
           <Button variant="outline" size="icon" onClick={() => navigate('/cleaners')}>
             Back
           </Button>
-          <h1 className="text-2xl font-bold">Cleaner #{cleaner.id}</h1>
+          <h1 className="text-2xl font-bold">{isAdd ? 'Add New Cleaner' : `Cleaner #${cleaner?.id}`}</h1>
         </div>
         <Card className="p-4">
           {isEditing ? (
@@ -130,30 +156,32 @@ export default function CleanerDetailsPage() {
                 <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button onClick={handleEdit} disabled={isSubmitting}>
-                  {isSubmitting ? 'Saving...' : 'Save'}
+                <Button onClick={isAdd ? handleCreate : handleEdit} disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : isAdd ? 'Create' : 'Save'}
                 </Button>
               </div>
             </div>
           ) : (
             <div className="grid gap-4">
               <div>
-                <span className="font-medium">Name:</span> {cleaner.name}
+                <span className="font-medium">Name:</span> {cleaner?.name}
               </div>
               <div>
-                <span className="font-medium">Surname:</span> {cleaner.surname}
+                <span className="font-medium">Surname:</span> {cleaner?.surname}
               </div>
               <div>
-                <span className="font-medium">Email:</span> {cleaner.email}
+                <span className="font-medium">Email:</span> {cleaner?.email}
               </div>
               <div>
-                <span className="font-medium">User Type:</span> {cleaner.userType}
+                <span className="font-medium">User Type:</span> {cleaner?.userType}
               </div>
               <div className="flex gap-2">
                 <Button onClick={() => setIsEditing(true)}>Edit</Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
-                  Delete
-                </Button>
+                {!isAdd && (
+                  <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
           )}

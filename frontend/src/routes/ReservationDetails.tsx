@@ -56,6 +56,28 @@ interface Reservation {
   totalPrice?: number
 }
 
+interface ExtraOrderItem {
+  inventoryItemId: number
+  quantity: number
+  name?: string
+}
+
+interface ExtraOrder {
+  id: number
+  reservationId: number
+  items: ExtraOrderItem[]
+  notes: string
+  status: string
+  createdAt: string
+}
+
+interface InventoryItem {
+  id: number
+  name: string
+  quantity: number
+  price: number
+}
+
 export default function ReservationDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -73,6 +95,11 @@ export default function ReservationDetailsPage() {
     checkinAt: '',
     checkoutAt: '',
   })
+  const [extraOrders, setExtraOrders] = useState<ExtraOrder[]>([])
+  const [loadingExtraOrders, setLoadingExtraOrders] = useState(false)
+  const [isAddExtraOrderOpen, setIsAddExtraOrderOpen] = useState(false)
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [newOrder, setNewOrder] = useState<{ items: { inventoryItemId: number; quantity: number }[]; notes: string }>({ items: [], notes: '' })
 
   useEffect(() => {
     const fetchReservation = async () => {
@@ -115,6 +142,47 @@ export default function ReservationDetailsPage() {
       })
     }
   }, [reservation, isEditDialogOpen])
+
+  // Fetch extra orders for this reservation
+  useEffect(() => {
+    const fetchExtraOrders = async () => {
+      if (!id || !token) return
+      setLoadingExtraOrders(true)
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/extra-orders/reservation/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) throw new Error('Failed to fetch extra orders')
+        const data = await response.json()
+        setExtraOrders(data)
+      } catch (error) {
+        console.error('Error fetching extra orders:', error)
+        setExtraOrders([])
+      } finally {
+        setLoadingExtraOrders(false)
+      }
+    }
+    fetchExtraOrders()
+  }, [id, token])
+
+  // Fetch inventory items for the order form
+  useEffect(() => {
+    const fetchInventory = async () => {
+      if (!token) return
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/inventory-items`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) throw new Error('Failed to fetch inventory items')
+        const data = await response.json()
+        setInventoryItems(data)
+      } catch (error) {
+        console.error('Error fetching inventory items:', error)
+        toast.error('Failed to fetch inventory items')
+      }
+    }
+    if (isAddExtraOrderOpen) fetchInventory()
+  }, [isAddExtraOrderOpen, token])
 
   const getStatusIcon = (status: ReservationStatus) => {
     switch (status) {
@@ -342,6 +410,39 @@ export default function ReservationDetailsPage() {
     } catch (err) {
       console.error('Error updating box:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to update box')
+    }
+  }
+
+  const handleAddExtraOrder = async () => {
+    if (!id || !token) return
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/extra-orders`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reservationId: parseInt(id, 10),
+          items: newOrder.items,
+          notes: newOrder.notes,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.message || 'Failed to create extra order')
+      }
+
+      const createdOrder = await response.json()
+      setExtraOrders((prev) => [...prev, createdOrder])
+      setIsAddExtraOrderOpen(false)
+      setNewOrder({ items: [], notes: '' })
+      toast.success('Extra order created successfully')
+    } catch (err) {
+      console.error('Error creating extra order:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to create extra order')
     }
   }
 
@@ -618,7 +719,90 @@ export default function ReservationDetailsPage() {
             </CardContent>
           </Card>
         </div>
+
+        <div className="mt-8">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xl font-bold">Extra Orders</h2>
+            <Button onClick={() => setIsAddExtraOrderOpen(true)}>Add Extra Order</Button>
+          </div>
+          {loadingExtraOrders ? (
+            <div>Loading extra orders...</div>
+          ) : extraOrders.length === 0 ? (
+            <div>No extra orders for this reservation.</div>
+          ) : (
+            <div className="space-y-2">
+              {extraOrders.map((order) => (
+                <Card key={order.id} className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">Order #{order.id}</div>
+                      <div className="text-sm text-muted-foreground">Status: {order.status}</div>
+                      <div className="text-sm text-muted-foreground">Created: {new Date(order.createdAt).toLocaleString()}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">Items:</div>
+                      <ul className="text-sm">
+                        {order.items.map((item, idx) => (
+                          <li key={idx}>
+                            {item.name || `Item #${item.inventoryItemId}`}: {item.quantity}
+                          </li>
+                        ))}
+                      </ul>
+                      {order.notes && <div className="text-xs mt-1">Notes: {order.notes}</div>}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      <Dialog open={isAddExtraOrderOpen} onOpenChange={setIsAddExtraOrderOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Extra Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1 font-medium">Items</label>
+              {inventoryItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-2 mb-2">
+                  <span className="w-32">{item.name}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newOrder.items.find((i) => i.inventoryItemId === item.id)?.quantity || 0}
+                    onChange={(e) => {
+                      const qty = Number(e.target.value)
+                      setNewOrder((prev) => {
+                        const items = prev.items.filter((i) => i.inventoryItemId !== item.id)
+                        return {
+                          ...prev,
+                          items: qty > 0 ? [...items, { inventoryItemId: item.id, quantity: qty }] : items,
+                        }
+                      })
+                    }}
+                    className="w-20 border rounded px-2 py-1"
+                  />
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Notes</label>
+              <textarea className="w-full border rounded px-2 py-1" value={newOrder.notes} onChange={(e) => setNewOrder((prev) => ({ ...prev, notes: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddExtraOrderOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddExtraOrder} disabled={newOrder.items.length === 0}>
+              Add Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
