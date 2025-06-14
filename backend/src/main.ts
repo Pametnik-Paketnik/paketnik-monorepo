@@ -18,7 +18,7 @@ async function bootstrap() {
     origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-User-ID'],  // Added X-User-ID
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-User-ID'], // Added X-User-ID
   });
 
   // Serve static files for testing
