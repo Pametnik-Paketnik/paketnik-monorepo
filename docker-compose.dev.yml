@@ -3,7 +3,6 @@ services:
     depends_on:
       - db
       - minio
-      - faceauth
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -33,27 +32,6 @@ services:
     #   - /app/node_modules # Keep container's node_modules
     env_file:
       - ./frontend/.env.dev
-
-  faceauth:
-    build:
-      context: ./face-auth-service
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    # volumes:
-    #   - ./face-auth-service/src:/app/src
-    env_file:
-      - ./face-auth-service/.env.dev
-    networks:
-      - default
-      - internal
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
   db:
     image: postgres:15
