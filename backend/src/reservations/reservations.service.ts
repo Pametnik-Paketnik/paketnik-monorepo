@@ -173,6 +173,10 @@ export class ReservationsService {
   }
 
   async findAll(): Promise<Reservation[]> {
+    // First, update any past reservations
+    await this.updatePastReservations();
+
+    // Then return all reservations
     return this.reservationsRepository.find({
       relations: ['guest', 'host', 'box'],
     });
@@ -594,5 +598,28 @@ export class ReservationsService {
     // Update the reservation status to CANCELLED
     reservation.status = ReservationStatus.CANCELLED;
     return await this.reservationsRepository.save(reservation);
+  }
+
+  // Add new method to automatically update past reservations
+  async updatePastReservations(): Promise<void> {
+    const now = new Date();
+
+    // Find all reservations that:
+    // 1. Have passed their checkout date
+    // 2. Are not already CHECKED_OUT or CANCELLED
+    const pastReservations = await this.reservationsRepository
+      .createQueryBuilder('reservation')
+      .where('reservation.checkoutAt < :now', { now })
+      .andWhere('reservation.status NOT IN (:...statuses)', {
+        statuses: [ReservationStatus.CHECKED_OUT, ReservationStatus.CANCELLED],
+      })
+      .getMany();
+
+    // Update each past reservation
+    for (const reservation of pastReservations) {
+      reservation.status = ReservationStatus.CHECKED_OUT;
+      reservation.actualCheckoutAt = now;
+      await this.reservationsRepository.save(reservation);
+    }
   }
 }

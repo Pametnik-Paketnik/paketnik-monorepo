@@ -22,7 +22,7 @@ fi
 
 if [ "$MISSING_CREDS" = true ]; then
     echo ""
-    echo "⚠️  Kaggle credentials missing! Please check your .env.dev file:"
+    echo "⚠️  Kaggle test credentials missing! Please check your .env.dev file:"
     echo "   KAGGLE_USERNAME=your_kaggle_username"
     echo "   KAGGLE_KEY=your_kaggle_api_key"
     echo "   KAGGLE_DATASET_NAME=your_username/your-dataset-name"

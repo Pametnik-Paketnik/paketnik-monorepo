@@ -1,35 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchReservations } from '@/store/reservationsSlice';
-import { fetchBoxes } from '@/store/boxesSlice';
-import type { RootState, AppDispatch } from '@/store';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, User, MapPin, Calendar, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Filter } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar as CalendarPicker } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import type { DateRange } from "react-day-picker";
+import { useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchReservations } from '@/store/reservationsSlice'
+import { fetchBoxes } from '@/store/boxesSlice'
+import type { RootState, AppDispatch } from '@/store'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Plus, User, MapPin, Calendar, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Filter } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Calendar as CalendarPicker } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { format } from 'date-fns'
+import { CalendarIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import type { DateRange } from 'react-day-picker'
+import { useNavigate } from 'react-router-dom'
 
 // User type enum to match backend
 enum UserType {
@@ -46,181 +33,204 @@ enum ReservationStatus {
 }
 
 // Filter types
-type StatusFilter = 'ALL' | 'UPCOMMING' | 'CHECKIN' | 'CHECKOUT' | 'CANCELED';
+type StatusFilter = 'ALL' | 'UPCOMMING' | 'CHECKIN' | 'CHECKOUT' | 'CANCELED'
 
 interface FilterState {
-  status: StatusFilter;
-  boxId: string;
-  dateRange: DateRange | undefined;
+  status: StatusFilter
+  boxId: string
+  dateRange: DateRange | undefined
 }
 
 interface User {
-  id: number;
-  username: string;
-  userType: UserType;
-  createdAt: string;
-  updatedAt: string;
+  id: number
+  username: string
+  userType: UserType
+  createdAt: string
+  updatedAt: string
 }
 
 interface BoxImage {
-  id: number;
-  imageKey: string;
-  fileName: string;
-  mimeType: string;
-  fileSize: number;
-  imageUrl: string;
-  isPrimary: boolean;
-  createdAt: string;
+  id: number
+  imageKey: string
+  fileName: string
+  mimeType: string
+  fileSize: number
+  imageUrl: string
+  isPrimary: boolean
+  createdAt: string
 }
 
 interface Box {
-  id: number;
-  boxId: string;
-  location: string;
-  owner: User;
-  pricePerNight: number;
-  images?: BoxImage[];
+  id: number
+  boxId: string
+  location: string
+  owner: User
+  pricePerNight: number
+  images?: BoxImage[]
 }
 
 interface BoxAvailability {
-  boxId: string;
-  location: string;
+  boxId: string
+  location: string
   unavailableDates: Array<{
-    startDate: string;
-    endDate: string;
-    status: string;
-  }>;
+    startDate: string
+    endDate: string
+    status: string
+  }>
 }
 
 interface Reservation {
-  id: number;
-  guest: User;
-  host: User;
-  box: Box;
-  checkinAt: string;
-  checkoutAt: string;
-  actualCheckinAt?: string;
-  actualCheckoutAt?: string;
-  status: ReservationStatus;
-  totalPrice?: number | string;
+  id: number
+  guest: User
+  host: User
+  box: Box
+  checkinAt: string
+  checkoutAt: string
+  actualCheckinAt?: string
+  actualCheckoutAt?: string
+  status: ReservationStatus
+  totalPrice?: number | string
 }
 
 // Simple box interface for the selector (from boxes slice)
 interface SimpleBox {
-  id: string;
-  boxId: string;
-  location: string;
-  status: string;
-  pricePerNight: number;
+  id: string
+  boxId: string
+  location: string
+  status: string
+  pricePerNight: number
 }
 
 export default function ReservationsPage() {
-  const dispatch = useDispatch<AppDispatch>();
-  const { items, loading, error } = useSelector((state: RootState) => state.reservations);
-  const { items: boxes } = useSelector((state: RootState) => state.boxes);
-  const user = useSelector((state: RootState) => state.auth.user);
-  const token = useSelector((state: RootState) => state.auth.accessToken);
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const dispatch = useDispatch<AppDispatch>()
+  const { items, loading, error } = useSelector((state: RootState) => state.reservations)
+  const { items: boxes } = useSelector((state: RootState) => state.boxes)
+  const user = useSelector((state: RootState) => state.auth.user)
+  const token = useSelector((state: RootState) => state.auth.accessToken)
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [newReservationData, setNewReservationData] = useState({
     boxId: '',
     guestId: '',
     checkinAt: '',
     checkoutAt: '',
-    hostId: user?.id || 0
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedBoxAvailability, setSelectedBoxAvailability] = useState<BoxAvailability | null>(null);
-  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    hostId: user?.id || 0,
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedBoxAvailability, setSelectedBoxAvailability] = useState<BoxAvailability | null>(null)
+  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const navigate = useNavigate()
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
     status: 'ALL',
     boxId: '',
-    dateRange: undefined
-  });
-  const [showFilters, setShowFilters] = useState(false);
+    dateRange: undefined,
+  })
+  const [showFilters, setShowFilters] = useState(false)
+
+  const [guestUsers, setGuestUsers] = useState<{ id: number; username: string }[]>([])
 
   // Helper function to safely format price
+  const calculateNightsAndPrice = (checkinAt: string, checkoutAt: string, pricePerNight: number | string) => {
+    const nights = Math.ceil((new Date(checkoutAt).getTime() - new Date(checkinAt).getTime()) / (1000 * 60 * 60 * 24))
+    const price = typeof pricePerNight === 'string' ? parseFloat(pricePerNight) : pricePerNight
+    const totalPrice = nights * price
+    return { nights, totalPrice }
+  }
+
   const formatPrice = (price: number | string | undefined): string => {
-    if (!price) return '0.00';
-    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
-  };
+    if (!price) return '0.00'
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2)
+  }
 
   // Helper function to map reservation status to filter status
-  const getFilterStatus = (status: ReservationStatus): StatusFilter => {
+  const getFilterStatus = (status: ReservationStatus, checkoutAt: string): StatusFilter => {
+    const now = new Date()
+    const checkoutDate = new Date(checkoutAt)
+
+    // If the checkout date has passed and status is CHECKED_OUT, it's completed
+    if (checkoutDate < now && status === ReservationStatus.CHECKED_OUT) {
+      return 'CHECKOUT'
+    }
+
+    // If checkout date has passed but not checked out, it's still pending
+    if (checkoutDate < now && status !== ReservationStatus.CHECKED_OUT && status !== ReservationStatus.CANCELLED) {
+      return 'UPCOMMING'
+    }
+
     switch (status) {
       case ReservationStatus.PENDING:
-        return 'UPCOMMING';
+        return 'UPCOMMING'
       case ReservationStatus.CHECKED_IN:
-        return 'CHECKIN';
+        return 'CHECKIN'
       case ReservationStatus.CHECKED_OUT:
-        return 'CHECKOUT';
+        return 'CHECKOUT'
       case ReservationStatus.CANCELLED:
-        return 'CANCELED';
+        return 'CANCELED'
       default:
-        return 'ALL';
+        return 'ALL'
     }
-  };
+  }
 
   // Helper function to get filter display name
   const getFilterDisplayName = (filter: StatusFilter): string => {
     switch (filter) {
       case 'UPCOMMING':
-        return 'Upcoming';
+        return 'Upcoming'
       case 'CHECKIN':
-        return 'Active';
+        return 'Active'
       case 'CHECKOUT':
-        return 'Past';
+        return 'Completed'
       case 'CANCELED':
-        return 'Canceled';
+        return 'Canceled'
       default:
-        return 'All';
+        return 'All'
     }
-  };
+  }
 
   // Filter reservations based on current filters
   const applyFilters = (reservations: Reservation[]): Reservation[] => {
     return reservations.filter((reservation) => {
       // Status filter
-      if (filters.status !== 'ALL' && getFilterStatus(reservation.status) !== filters.status) {
-        return false;
+      if (filters.status !== 'ALL' && getFilterStatus(reservation.status, reservation.checkoutAt) !== filters.status) {
+        return false
       }
 
       // Box filter
       if (filters.boxId && reservation.box.boxId !== filters.boxId) {
-        return false;
+        return false
       }
 
       // Date range filter
       if (filters.dateRange?.from || filters.dateRange?.to) {
-        const checkinDate = new Date(reservation.checkinAt);
-        const checkoutDate = new Date(reservation.checkoutAt);
-        
+        const checkinDate = new Date(reservation.checkinAt)
+        const checkoutDate = new Date(reservation.checkoutAt)
+
         if (filters.dateRange.from && checkoutDate < filters.dateRange.from) {
-          return false;
+          return false
         }
-        
+
         if (filters.dateRange.to && checkinDate > filters.dateRange.to) {
-          return false;
+          return false
         }
       }
 
-      return true;
-    });
-  };
+      return true
+    })
+  }
 
   // Clear all filters
   const clearFilters = () => {
     setFilters({
       status: 'ALL',
       boxId: '',
-      dateRange: undefined
-    });
-  };
+      dateRange: undefined,
+    })
+  }
 
   // Get count for each status
   const getStatusCounts = (reservations: Reservation[]) => {
@@ -229,219 +239,249 @@ export default function ReservationsPage() {
       UPCOMMING: 0,
       CHECKIN: 0,
       CHECKOUT: 0,
-      CANCELED: 0
-    };
+      CANCELED: 0,
+    }
 
     reservations.forEach((reservation) => {
-      const filterStatus = getFilterStatus(reservation.status);
-      counts[filterStatus]++;
-    });
+      const filterStatus = getFilterStatus(reservation.status, reservation.checkoutAt)
+      counts[filterStatus]++
+    })
 
-    return counts;
-  };
+    return counts
+  }
 
   useEffect(() => {
-    dispatch(fetchReservations());
-    dispatch(fetchBoxes());
-  }, [dispatch]);
+    dispatch(fetchReservations())
+    dispatch(fetchBoxes())
+  }, [dispatch])
 
-  const validItems = (items as Reservation[]).filter((item) => {
-    return item && item.id;
-  }).sort((a, b) => {
-    const now = new Date();
-    const dateA = new Date(a.checkinAt);
-    const dateB = new Date(b.checkinAt);
-    // Calculate absolute difference from current date
-    const diffA = Math.abs(dateA.getTime() - now.getTime());
-    const diffB = Math.abs(dateB.getTime() - now.getTime());
-    return diffA - diffB;
-  });
+  const validItems = (items as Reservation[])
+    .filter((item) => {
+      return item && item.id
+    })
+    .sort((a, b) => {
+      const now = new Date()
+      const dateA = new Date(a.checkinAt)
+      const dateB = new Date(b.checkinAt)
+      // Calculate absolute difference from current date
+      const diffA = Math.abs(dateA.getTime() - now.getTime())
+      const diffB = Math.abs(dateB.getTime() - now.getTime())
+      return diffA - diffB
+    })
 
   // Apply filters to get filtered reservations
-  const filteredReservations = applyFilters(validItems);
-  const statusCounts = getStatusCounts(validItems);
-  const totalReservations = filteredReservations.length;
+  const filteredReservations = applyFilters(validItems)
+  const statusCounts = getStatusCounts(validItems)
+  const totalReservations = filteredReservations.length
 
   const validBoxes = (boxes as SimpleBox[]).filter((item) => {
-    const hasId = item && typeof item.boxId === 'string' && item.boxId.length > 0;
-    return hasId;
-  });
+    const hasId = item && typeof item.boxId === 'string' && item.boxId.length > 0
+    return hasId
+  })
 
   const fetchBoxAvailability = async (boxId: string) => {
-    if (!token) return;
-    
-    setIsLoadingAvailability(true);
+    if (!token) return
+
+    setIsLoadingAvailability(true)
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/boxes/${boxId}/availability`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      });
+      })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch box availability');
+        throw new Error('Failed to fetch box availability')
       }
 
-      const data = await response.json();
-      setSelectedBoxAvailability(data);
+      const data = await response.json()
+      setSelectedBoxAvailability(data)
     } catch (error) {
-      console.error('Error fetching box availability:', error);
-      setSelectedBoxAvailability(null);
+      console.error('Error fetching box availability:', error)
+      setSelectedBoxAvailability(null)
     } finally {
-      setIsLoadingAvailability(false);
+      setIsLoadingAvailability(false)
     }
-  };
+  }
 
   const handleBoxChange = (boxId: string) => {
-    setNewReservationData(prev => ({ ...prev, boxId }));
-    fetchBoxAvailability(boxId);
-  };
+    setNewReservationData((prev) => ({ ...prev, boxId }))
+    fetchBoxAvailability(boxId)
+  }
 
-  const getStatusIcon = (status: ReservationStatus) => {
+  const getStatusIcon = (status: ReservationStatus, checkoutAt: string) => {
+    const now = new Date()
+    const checkoutDate = new Date(checkoutAt)
+    const isCompleted = checkoutDate < now && status === ReservationStatus.CHECKED_OUT
+
     switch (status) {
       case ReservationStatus.PENDING:
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="h-4 w-4" />
       case ReservationStatus.CHECKED_IN:
-        return <CheckCircle className="h-4 w-4 text-blue-500" />;
+        return <CheckCircle className="h-4 w-4 text-blue-500" />
       case ReservationStatus.CHECKED_OUT:
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className={`h-4 w-4 ${isCompleted ? 'text-white' : 'text-green-500'}`} />
       case ReservationStatus.CANCELLED:
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-500" />
       default:
-        return <AlertCircle className="h-4 w-4" />;
+        return <AlertCircle className="h-4 w-4" />
     }
-  };
+  }
 
-  const getStatusColor = (status: ReservationStatus) => {
+  const getStatusColor = (status: ReservationStatus, checkoutAt: string) => {
+    const now = new Date()
+    const checkoutDate = new Date(checkoutAt)
+    const isCompleted = checkoutDate < now && status === ReservationStatus.CHECKED_OUT
+
     switch (status) {
       case ReservationStatus.PENDING:
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case ReservationStatus.CHECKED_IN:
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-100 text-blue-800 border-blue-200'
       case ReservationStatus.CHECKED_OUT:
-        return 'bg-green-100 text-green-800 border-green-200';
+        return isCompleted ? 'bg-green-600 text-white border-green-700' : 'bg-green-100 text-green-800 border-green-200'
       case ReservationStatus.CANCELLED:
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 text-red-800 border-red-200'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
-  };
+  }
 
   const handleAddReservation = async () => {
     if (!user?.id || !token) {
-      console.error('No user ID or token available');
-      return;
+      console.error('No user ID or token available')
+      return
     }
 
     console.log('Starting reservation creation with data:', {
       newReservationData,
       user: user.id,
-      token: token ? 'Token exists' : 'No token'
-    });
+      token: token ? 'Token exists' : 'No token',
+    })
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
       const requestBody = {
         guestId: parseInt(newReservationData.guestId),
         hostId: user.id,
         boxId: newReservationData.boxId,
         checkinAt: newReservationData.checkinAt,
-        checkoutAt: newReservationData.checkoutAt
-      };
+        checkoutAt: newReservationData.checkoutAt,
+      }
 
-      console.log('Sending reservation request with body:', requestBody);
+      console.log('Sending reservation request with body:', requestBody)
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/reservations`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'accept': 'application/json'
+          accept: 'application/json',
         },
-        body: JSON.stringify(requestBody)
-      });
+        body: JSON.stringify(requestBody),
+      })
 
-      console.log('Response status:', response.status);
-      
+      console.log('Response status:', response.status)
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response from server:', errorText);
-        throw new Error(`Failed to add reservation: ${errorText}`);
+        const errorText = await response.text()
+        console.error('Error response from server:', errorText)
+        throw new Error(`Failed to add reservation: ${errorText}`)
       }
 
-      const responseData = await response.json();
-      console.log('Successfully created reservation:', responseData);
+      const responseData = await response.json()
+      console.log('Successfully created reservation:', responseData)
 
       // Refresh the reservations list
-      dispatch(fetchReservations());
-      setIsAddDialogOpen(false);
+      dispatch(fetchReservations())
+      setIsAddDialogOpen(false)
       setNewReservationData({
         boxId: '',
         guestId: '',
         checkinAt: '',
         checkoutAt: '',
-        hostId: user?.id || 0
-      });
-      setSelectedBoxAvailability(null);
+        hostId: user?.id || 0,
+      })
+      setSelectedBoxAvailability(null)
     } catch (error) {
-      console.error('Error in handleAddReservation:', error);
+      console.error('Error in handleAddReservation:', error)
       // TODO: Show error message to user
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const isDateUnavailable = (date: Date) => {
-    if (!selectedBoxAvailability) return false;
+    if (!selectedBoxAvailability) return false
 
     return selectedBoxAvailability.unavailableDates.some(({ startDate, endDate }) => {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      return date >= start && date <= end;
-    });
-  };
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      return date >= start && date <= end
+    })
+  }
 
   const findOverlappingDates = (from: Date, to: Date): { startDate: string; endDate: string } | null => {
-    if (!selectedBoxAvailability) return null;
+    if (!selectedBoxAvailability) return null
 
     const overlapping = selectedBoxAvailability.unavailableDates.find(({ startDate, endDate }) => {
-      const unavailableStart = new Date(startDate);
-      const unavailableEnd = new Date(endDate);
-      return from <= unavailableEnd && unavailableStart <= to;
-    });
+      const unavailableStart = new Date(startDate)
+      const unavailableEnd = new Date(endDate)
+      return from <= unavailableEnd && unavailableStart <= to
+    })
 
-    return overlapping || null;
-  };
+    return overlapping || null
+  }
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
+    setDateRange(range)
     if (range?.from && range.from instanceof Date) {
       // If we have both from and to dates, check if the range is valid
       if (range.to && range.to instanceof Date) {
         // Check for overlapping dates
-        const overlapping = findOverlappingDates(range.from, range.to);
+        const overlapping = findOverlappingDates(range.from, range.to)
         if (overlapping) {
-          const formatDate = (dateStr: string) => format(new Date(dateStr), "MMM d, yyyy");
+          const formatDate = (dateStr: string) => format(new Date(dateStr), 'MMM d, yyyy')
           // For now, we'll use a simple alert until we add the toast component
-          alert(`Your selected dates overlap with an existing reservation from ${formatDate(overlapping.startDate)} to ${formatDate(overlapping.endDate)}. Please try different dates.`);
-          return;
+          alert(
+            `Your selected dates overlap with an existing reservation from ${formatDate(overlapping.startDate)} to ${formatDate(overlapping.endDate)}. Please try different dates.`,
+          )
+          return
         }
       }
-      
-      setNewReservationData(prev => ({
+
+      setNewReservationData((prev) => ({
         ...prev,
         checkinAt: range.from!.toISOString(),
-        checkoutAt: range.to ? range.to.toISOString() : ''
-      }));
+        checkoutAt: range.to ? range.to.toISOString() : '',
+      }))
     } else {
-      setNewReservationData(prev => ({
+      setNewReservationData((prev) => ({
         ...prev,
         checkinAt: '',
-        checkoutAt: ''
-      }));
+        checkoutAt: '',
+      }))
     }
-  };
+  }
+
+  // Fetch guest users when add dialog opens
+  useEffect(() => {
+    const fetchGuests = async () => {
+      if (!token) return
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/users?userType=USER`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) throw new Error('Failed to fetch users')
+        const data = await response.json()
+        setGuestUsers(data)
+      } catch (error) {
+        console.error('Error fetching users:', error)
+      }
+    }
+    if (isAddDialogOpen) fetchGuests()
+  }, [isAddDialogOpen, token])
 
   return (
     <div key="page-container" className="@container/main flex flex-1 flex-col gap-2 px-4 md:px-6 lg:px-8">
@@ -454,11 +494,7 @@ export default function ReservationsPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Filters
               {(filters.status !== 'ALL' || filters.boxId || filters.dateRange) && (
@@ -467,10 +503,7 @@ export default function ReservationsPage() {
                 </Badge>
               )}
             </Button>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="flex items-center gap-2"
-            >
+            <Button onClick={() => setIsAddDialogOpen(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Add Reservation
             </Button>
@@ -495,17 +528,22 @@ export default function ReservationsPage() {
                   {(['ALL', 'UPCOMMING', 'CHECKIN', 'CHECKOUT', 'CANCELED'] as StatusFilter[]).map((status) => (
                     <Button
                       key={status}
-                      variant={filters.status === status ? "default" : "outline"}
+                      variant={filters.status === status ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setFilters(prev => ({ ...prev, status }))}
+                      onClick={() => setFilters((prev) => ({ ...prev, status }))}
                       className="flex items-center gap-2"
                     >
-                      {status !== 'ALL' && getStatusIcon(
-                        status === 'UPCOMMING' ? ReservationStatus.PENDING :
-                        status === 'CHECKIN' ? ReservationStatus.CHECKED_IN :
-                        status === 'CHECKOUT' ? ReservationStatus.CHECKED_OUT :
-                        ReservationStatus.CANCELLED
-                      )}
+                      {status !== 'ALL' &&
+                        getStatusIcon(
+                          status === 'UPCOMMING'
+                            ? ReservationStatus.PENDING
+                            : status === 'CHECKIN'
+                            ? ReservationStatus.CHECKED_IN
+                            : status === 'CHECKOUT'
+                            ? ReservationStatus.CHECKED_OUT
+                            : ReservationStatus.CANCELLED,
+                          new Date().toISOString(),
+                        )}
                       {getFilterDisplayName(status)}
                       <Badge variant="secondary" className="ml-1">
                         {statusCounts[status]}
@@ -515,51 +553,41 @@ export default function ReservationsPage() {
                 </div>
               </div>
 
-                             {/* Box Filter */}
-               <div className="space-y-3">
-                 <Label className="text-base font-medium">Box</Label>
-                 <Select
-                   value={filters.boxId || "all"}
-                   onValueChange={(value) => setFilters(prev => ({ ...prev, boxId: value === "all" ? "" : value }))}
-                 >
-                   <SelectTrigger className="w-full max-w-md">
-                     <SelectValue placeholder="All boxes" />
-                   </SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="all">All boxes</SelectItem>
-                     {validBoxes.map((box) => (
-                       <SelectItem key={box.boxId} value={box.boxId}>
-                         <div className="flex items-center justify-between w-full">
-                           <span className="font-medium">Box {box.boxId}</span>
-                           <span className="text-muted-foreground ml-2">{box.location}</span>
-                         </div>
-                       </SelectItem>
-                     ))}
-                   </SelectContent>
-                 </Select>
-               </div>
+              {/* Box Filter */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Box</Label>
+                <Select value={filters.boxId || 'all'} onValueChange={(value) => setFilters((prev) => ({ ...prev, boxId: value === 'all' ? '' : value }))}>
+                  <SelectTrigger className="w-full max-w-md">
+                    <SelectValue placeholder="All boxes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All boxes</SelectItem>
+                    {validBoxes.map((box) => (
+                      <SelectItem key={box.boxId} value={box.boxId}>
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-medium">Box {box.boxId}</span>
+                          <span className="text-muted-foreground ml-2">{box.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Date Range Filter */}
               <div className="space-y-3">
                 <Label className="text-base font-medium">Date Range</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full max-w-md justify-start text-left font-normal",
-                        !filters.dateRange && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn('w-full max-w-md justify-start text-left font-normal', !filters.dateRange && 'text-muted-foreground')}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {filters.dateRange?.from ? (
                         filters.dateRange.to ? (
                           <>
-                            {format(filters.dateRange.from, "LLL dd, y")} -{" "}
-                            {format(filters.dateRange.to, "LLL dd, y")}
+                            {format(filters.dateRange.from, 'LLL dd, y')} - {format(filters.dateRange.to, 'LLL dd, y')}
                           </>
                         ) : (
-                          format(filters.dateRange.from, "LLL dd, y")
+                          format(filters.dateRange.from, 'LLL dd, y')
                         )
                       ) : (
                         <span>Filter by date range</span>
@@ -572,7 +600,7 @@ export default function ReservationsPage() {
                       mode="range"
                       defaultMonth={filters.dateRange?.from}
                       selected={filters.dateRange}
-                      onSelect={(range) => setFilters(prev => ({ ...prev, dateRange: range }))}
+                      onSelect={(range) => setFilters((prev) => ({ ...prev, dateRange: range }))}
                       numberOfMonths={2}
                       className="rounded-md"
                     />
@@ -591,7 +619,7 @@ export default function ReservationsPage() {
             </div>
           </div>
         )}
-        
+
         {error && (
           <div className="flex items-center justify-center py-8">
             <div className="text-center text-red-500">
@@ -608,9 +636,9 @@ export default function ReservationsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Reservation #{reservation.id}</CardTitle>
-                    <Badge className={`flex items-center gap-1 ${getStatusColor(reservation.status)}`}>
-                      {getStatusIcon(reservation.status)}
-                      {getFilterDisplayName(getFilterStatus(reservation.status))}
+                    <Badge className={`flex items-center gap-1 ${getStatusColor(reservation.status, reservation.checkoutAt)}`}>
+                      {getStatusIcon(reservation.status, reservation.checkoutAt)}
+                      {getFilterDisplayName(getFilterStatus(reservation.status, reservation.checkoutAt))}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -646,11 +674,11 @@ export default function ReservationsPage() {
                     <div className="ml-6 space-y-1">
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Guest:</span>
-                        <span className="text-sm font-medium">{reservation.guest.username}</span>
+                        <span className="text-sm font-medium">{reservation.guest?.username || 'Unknown'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Guest ID:</span>
-                        <span className="text-sm font-medium">{reservation.guest.id}</span>
+                        <span className="text-sm font-medium">{reservation.guest?.id || 'Unknown'}</span>
                       </div>
                     </div>
                   </div>
@@ -664,30 +692,22 @@ export default function ReservationsPage() {
                     <div className="ml-6 space-y-1">
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Check-in:</span>
-                        <span className="text-sm font-medium">
-                          {new Date(reservation.checkinAt).toLocaleDateString()}
-                        </span>
+                        <span className="text-sm font-medium">{new Date(reservation.checkinAt).toLocaleDateString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Check-out:</span>
-                        <span className="text-sm font-medium">
-                          {new Date(reservation.checkoutAt).toLocaleDateString()}
-                        </span>
+                        <span className="text-sm font-medium">{new Date(reservation.checkoutAt).toLocaleDateString()}</span>
                       </div>
                       {reservation.actualCheckinAt && (
                         <div className="flex justify-between">
                           <span className="text-sm text-muted-foreground">Actual Check-in:</span>
-                          <span className="text-sm font-medium text-green-600">
-                            {new Date(reservation.actualCheckinAt).toLocaleString()}
-                          </span>
+                          <span className="text-sm font-medium text-green-600">{new Date(reservation.actualCheckinAt).toLocaleString()}</span>
                         </div>
                       )}
                       {reservation.actualCheckoutAt && (
                         <div className="flex justify-between">
                           <span className="text-sm text-muted-foreground">Actual Check-out:</span>
-                          <span className="text-sm font-medium text-green-600">
-                            {new Date(reservation.actualCheckoutAt).toLocaleString()}
-                          </span>
+                          <span className="text-sm font-medium text-green-600">{new Date(reservation.actualCheckoutAt).toLocaleString()}</span>
                         </div>
                       )}
                     </div>
@@ -704,7 +724,7 @@ export default function ReservationsPage() {
                         <div className="flex justify-between">
                           <span className="text-sm text-muted-foreground">Total Price:</span>
                           <span className="text-sm font-medium text-green-600">
-                            ${formatPrice(reservation.totalPrice)}
+                            ${formatPrice(calculateNightsAndPrice(reservation.checkinAt, reservation.checkoutAt, reservation.box.pricePerNight).totalPrice)}
                           </span>
                         </div>
                       </div>
@@ -712,12 +732,7 @@ export default function ReservationsPage() {
                   )}
 
                   <div className="pt-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => setSelectedReservation(reservation)}
-                    >
+                    <Button size="sm" className="w-full" onClick={() => navigate(`/reservations/${reservation.id}`)}>
                       View Details
                     </Button>
                   </div>
@@ -754,11 +769,9 @@ export default function ReservationsPage() {
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Create New Reservation</DialogTitle>
-            <DialogDescription>
-              Select a box and pick your reservation dates
-            </DialogDescription>
+            <DialogDescription>Select a box and pick your reservation dates</DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             {/* Step 1: Box Selection */}
             <div className="space-y-3">
@@ -769,8 +782,8 @@ export default function ReservationsPage() {
               <Select
                 value={newReservationData.boxId}
                 onValueChange={(value) => {
-                  handleBoxChange(value);
-                  setShowDatePicker(true);
+                  handleBoxChange(value)
+                  setShowDatePicker(true)
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -791,13 +804,13 @@ export default function ReservationsPage() {
             </div>
 
             {/* Step 2: Date Selection */}
-            {(newReservationData.boxId && showDatePicker) && (
+            {newReservationData.boxId && showDatePicker && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">2</div>
                   <Label className="text-base font-medium">Pick Dates</Label>
                 </div>
-                
+
                 {isLoadingAvailability && (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-center">
@@ -810,22 +823,15 @@ export default function ReservationsPage() {
                   <div className="space-y-3">
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !dateRange && "text-muted-foreground"
-                          )}
-                        >
+                        <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !dateRange && 'text-muted-foreground')}>
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {dateRange?.from ? (
                             dateRange.to ? (
                               <>
-                                {format(dateRange.from, "LLL dd, y")} -{" "}
-                                {format(dateRange.to, "LLL dd, y")}
+                                {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
                               </>
                             ) : (
-                              format(dateRange.from, "LLL dd, y")
+                              format(dateRange.from, 'LLL dd, y')
                             )
                           ) : (
                             <span>Select your stay dates</span>
@@ -848,48 +854,46 @@ export default function ReservationsPage() {
                           numberOfMonths={2}
                           disabled={(date: Date) => {
                             // Disable past dates
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-                            if (date < today) return true;
-                            
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+                            if (date < today) return true
+
                             // Disable unavailable dates
-                            return isDateUnavailable(date);
+                            return isDateUnavailable(date)
                           }}
                           className="rounded-md"
                           classNames={{
-                            months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                            month: "space-y-4",
-                            caption: "flex justify-center pt-1 relative items-center",
-                            caption_label: "text-sm font-medium",
-                            nav: "space-x-1 flex items-center",
+                            months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
+                            month: 'space-y-4',
+                            caption: 'flex justify-center pt-1 relative items-center',
+                            caption_label: 'text-sm font-medium',
+                            nav: 'space-x-1 flex items-center',
                             nav_button: cn(
-                              "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-7 w-7 p-0"
+                              'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-7 w-7 p-0',
                             ),
-                            nav_button_previous: "absolute left-1",
-                            nav_button_next: "absolute right-1",
-                            table: "w-full border-collapse space-y-1",
-                            head_row: "flex",
-                            head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-                            row: "flex w-full mt-2",
-                            cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                            nav_button_previous: 'absolute left-1',
+                            nav_button_next: 'absolute right-1',
+                            table: 'w-full border-collapse space-y-1',
+                            head_row: 'flex',
+                            head_cell: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
+                            row: 'flex w-full mt-2',
+                            cell: 'text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
                             day: cn(
-                              "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-selected:opacity-100 h-9 w-9 p-0 font-normal aria-selected:bg-primary aria-selected:text-primary-foreground hover:bg-accent hover:text-accent-foreground"
+                              'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-selected:opacity-100 h-9 w-9 p-0 font-normal aria-selected:bg-primary aria-selected:text-primary-foreground hover:bg-accent hover:text-accent-foreground',
                             ),
-                            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                            day_today: "bg-accent text-accent-foreground",
-                            day_outside: "text-muted-foreground opacity-50",
-                            day_disabled: "text-muted-foreground opacity-50 cursor-not-allowed bg-red-100 hover:bg-red-100 text-red-900 font-medium",
-                            day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-                            day_hidden: "invisible",
+                            day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
+                            day_today: 'bg-accent text-accent-foreground',
+                            day_outside: 'text-muted-foreground opacity-50',
+                            day_disabled: 'text-muted-foreground opacity-50 cursor-not-allowed bg-red-100 hover:bg-red-100 text-red-900 font-medium',
+                            day_range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
+                            day_hidden: 'invisible',
                           }}
                         />
                       </PopoverContent>
                     </Popover>
 
                     {dateRange?.from && dateRange?.to && (
-                      <div className="text-sm text-muted-foreground">
-                        {Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))} night stay
-                      </div>
+                      <div className="text-sm text-muted-foreground">{Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))} night stay</div>
                     )}
                   </div>
                 )}
@@ -904,17 +908,22 @@ export default function ReservationsPage() {
                   <Label className="text-base font-medium">Guest Information</Label>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="guestId" className="text-sm">Guest ID</Label>
-                  <Input
-                    id="guestId"
-                    value={newReservationData.guestId}
-                    onChange={(e) => setNewReservationData(prev => ({ ...prev, guestId: e.target.value }))}
-                    placeholder="Enter the guest's user ID"
-                    className="max-w-md"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    The numeric ID of the guest user who will use this reservation
-                  </p>
+                  <Label htmlFor="guestId" className="text-sm">
+                    Guest
+                  </Label>
+                  <Select value={newReservationData.guestId} onValueChange={(value) => setNewReservationData((prev) => ({ ...prev, guestId: value }))}>
+                    <SelectTrigger className="max-w-md">
+                      <SelectValue placeholder="Select a guest..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {guestUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.username} (ID: {user.id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Select the guest user for this reservation</p>
                 </div>
               </div>
             )}
@@ -931,7 +940,7 @@ export default function ReservationsPage() {
                   <div>
                     <span className="text-muted-foreground">Dates:</span>
                     <div className="font-medium">
-                      {format(new Date(newReservationData.checkinAt), "MMM d")} - {format(new Date(newReservationData.checkoutAt), "MMM d, yyyy")}
+                      {format(new Date(newReservationData.checkinAt), 'MMM d')} - {format(new Date(newReservationData.checkoutAt), 'MMM d, yyyy')}
                     </div>
                   </div>
                   <div>
@@ -943,7 +952,9 @@ export default function ReservationsPage() {
                   <div>
                     <span className="text-muted-foreground">Total Price:</span>
                     <div className="font-medium text-green-600">
-                      ${(validBoxes.find(b => b.boxId === newReservationData.boxId)?.pricePerNight || 0) * Math.ceil((new Date(newReservationData.checkoutAt).getTime() - new Date(newReservationData.checkinAt).getTime()) / (1000 * 60 * 60 * 24))}
+                      $
+                      {(validBoxes.find((b) => b.boxId === newReservationData.boxId)?.pricePerNight || 0) *
+                        Math.ceil((new Date(newReservationData.checkoutAt).getTime() - new Date(newReservationData.checkinAt).getTime()) / (1000 * 60 * 60 * 24))}
                     </div>
                   </div>
                 </div>
@@ -952,26 +963,26 @@ export default function ReservationsPage() {
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
-                setIsAddDialogOpen(false);
-                setSelectedBoxAvailability(null);
-                setShowDatePicker(false);
+                setIsAddDialogOpen(false)
+                setSelectedBoxAvailability(null)
+                setShowDatePicker(false)
                 setNewReservationData({
                   boxId: '',
                   guestId: '',
                   checkinAt: '',
                   checkoutAt: '',
-                  hostId: user?.id || 0
-                });
+                  hostId: user?.id || 0,
+                })
               }}
               disabled={isSubmitting}
               className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleAddReservation}
               disabled={isSubmitting || !newReservationData.boxId || !newReservationData.guestId || !newReservationData.checkinAt || !newReservationData.checkoutAt}
               className="w-full sm:w-auto"
@@ -987,9 +998,7 @@ export default function ReservationsPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Reservation Details</DialogTitle>
-            <DialogDescription>
-              Complete information about reservation #{selectedReservation?.id}
-            </DialogDescription>
+            <DialogDescription>Complete information about reservation #{selectedReservation?.id}</DialogDescription>
           </DialogHeader>
           {selectedReservation && (
             <div className="grid gap-6 py-4">
@@ -1003,8 +1012,8 @@ export default function ReservationsPage() {
                   </div>
                   <div>
                     <div className="font-medium text-sm">Status</div>
-                    <Badge className={`${getStatusColor(selectedReservation.status)} flex items-center gap-1 w-fit`}>
-                      {getStatusIcon(selectedReservation.status)}
+                    <Badge className={`${getStatusColor(selectedReservation.status, selectedReservation.checkoutAt)} flex items-center gap-1 w-fit`}>
+                      {getStatusIcon(selectedReservation.status, selectedReservation.checkoutAt)}
                       {selectedReservation.status}
                     </Badge>
                   </div>
@@ -1029,7 +1038,7 @@ export default function ReservationsPage() {
                   </div>
                   <div>
                     <div className="font-medium text-sm">Box Owner</div>
-                    <div className="text-sm text-muted-foreground">{selectedReservation.box.owner.username}</div>
+                    <div className="text-sm text-muted-foreground">{selectedReservation.box.owner?.username || 'Unknown'}</div>
                   </div>
                 </div>
               </div>
@@ -1040,11 +1049,13 @@ export default function ReservationsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="font-medium text-sm">Guest</div>
-                    <div className="text-sm text-muted-foreground">{selectedReservation.guest.username} (ID: {selectedReservation.guest.id})</div>
+                    <div className="text-sm text-muted-foreground">{selectedReservation.guest?.username || 'Unknown'}</div>
                   </div>
                   <div>
                     <div className="font-medium text-sm">Host</div>
-                    <div className="text-sm text-muted-foreground">{selectedReservation.host.username} (ID: {selectedReservation.host.id})</div>
+                    <div className="text-sm text-muted-foreground">
+                      {selectedReservation.host.username} (ID: {selectedReservation.host.id})
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1081,10 +1092,10 @@ export default function ReservationsPage() {
                 <div className="space-y-3">
                   <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Financial</h4>
                   <div className="grid grid-cols-2 gap-4">
-                                         <div>
-                       <div className="font-medium text-sm">Total Price</div>
-                       <div className="text-lg font-semibold text-green-600">${formatPrice(selectedReservation.totalPrice)}</div>
-                     </div>
+                    <div>
+                      <div className="font-medium text-sm">Total Price</div>
+                      <div className="text-lg font-semibold text-green-600">${formatPrice(selectedReservation.totalPrice)}</div>
+                    </div>
                     <div>
                       <div className="font-medium text-sm">Nights</div>
                       <div className="text-sm text-muted-foreground">
@@ -1099,5 +1110,5 @@ export default function ReservationsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-} 
+  )
+}
