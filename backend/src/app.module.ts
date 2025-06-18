@@ -16,6 +16,7 @@ import { ExtraOrdersModule } from './extra-orders/extra-orders.module';
 import { CleanersModule } from './cleaners/cleaners.module';
 import { TotpAuthModule } from './totp-auth/totp-auth.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { FirebaseModule } from './firebase/firebase.module';
         getDatabaseConfig(configService),
       inject: [ConfigService],
     }),
+    RedisModule,
     FirebaseModule,
     StorageModule,
     UsersModule,
