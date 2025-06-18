@@ -51,13 +51,12 @@ services:
     image: redis:7-alpine
     container_name: redis
     restart: always
+    command: ["redis-server", "--requirepass", "your_password_here"]
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes --requirepass yourredispassword
     networks:
-      - default
       - internal
 
   # Optional: Redis GUI for development
@@ -70,6 +69,9 @@ services:
       - redis
     volumes:
       - redis-insight:/data
+    networks:
+      - default
+      - internal
 
   pgadmin:
     image: dpage/pgadmin4
