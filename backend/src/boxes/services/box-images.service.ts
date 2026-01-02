@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BoxImage } from '../entities/box-image.entity';
@@ -18,6 +19,7 @@ export class BoxImagesService {
     @InjectRepository(Box)
     private boxRepository: Repository<Box>,
     private storageService: StorageService,
+    private configService: ConfigService,
   ) {}
 
   async uploadImage(
@@ -51,11 +53,8 @@ export class BoxImagesService {
     }
 
     try {
-      // Upload to MinIO using storage service
-      const { url, key } = await this.storageService.uploadBoxImage(
-        file,
-        boxId,
-      );
+      // Upload to MinIO using storage service (now compresses with FLoCIC)
+      const { key } = await this.storageService.uploadBoxImage(file, boxId);
 
       // If this image is set as primary, unset other primary images for this box
       if (isPrimary) {
@@ -65,18 +64,35 @@ export class BoxImagesService {
         );
       }
 
-      // Save image metadata to database
+      // Save image metadata to database (temporarily without imageUrl)
       const boxImage = this.boxImageRepository.create({
         imageKey: key,
         fileName: file.originalname,
         mimeType: file.mimetype,
         fileSize: file.size,
-        imageUrl: url,
+        imageUrl: '', // Will be set after save
         isPrimary,
         box,
       });
 
-      return await this.boxImageRepository.save(boxImage);
+      const savedImage = await this.boxImageRepository.save(boxImage);
+
+      // Generate backend URL for serving the image
+      const apiBaseUrl =
+        this.configService.get<string>('API_BASE_URL') ||
+        this.configService.get<string>('BASE_URL') ||
+        'http://localhost:3000';
+
+      // Ensure URL has proper format (fix missing colon issue)
+      const baseUrl =
+        apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://')
+          ? apiBaseUrl
+          : `http://${apiBaseUrl}`;
+
+      // Use public endpoint (no auth required for displaying images)
+      savedImage.imageUrl = `${baseUrl}/api/public/boxes/${boxId}/images/${savedImage.id}/file`;
+
+      return await this.boxImageRepository.save(savedImage);
     } catch (error: unknown) {
       const errorMessage = (error as Error)?.message || 'Unknown error';
       throw new BadRequestException(`Failed to upload image: ${errorMessage}`);
