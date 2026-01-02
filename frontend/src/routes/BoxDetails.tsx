@@ -23,6 +23,14 @@ interface BoxImage {
   createdAt: string
 }
 
+// Helper to normalize image URLs (handles both old format without protocol and new format with protocol)
+const normalizeImageUrl = (url: string): string => {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  return `http://${url}`
+}
+
 interface Box {
   id: string
   boxId: string
@@ -226,7 +234,7 @@ export default function BoxDetailsPage() {
                     .map((image) => (
                       <div key={image.id} className="relative aspect-square">
                         <img
-                          src={`http://${image.imageUrl}`}
+                          src={normalizeImageUrl(image.imageUrl)}
                           alt={image.fileName}
                           className="w-full h-full object-cover rounded-lg border"
                           onError={(e) => {
