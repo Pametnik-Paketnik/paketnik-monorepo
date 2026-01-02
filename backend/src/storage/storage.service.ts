@@ -11,6 +11,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MulterFile } from '../common/interfaces/multer.interface';
+import { FlocicService } from './flocic.service';
 
 export interface UploadOptions {
   bucket: 'images' | 'models';
@@ -33,7 +34,10 @@ export class StorageService {
     models: 'face-auth-models',
   };
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private flocicService: FlocicService,
+  ) {
     const endpoint = this.configService.get<string>('MINIO_ENDPOINT');
     const port = this.configService.get<number>('MINIO_PORT');
     const useSSL = this.configService.get<boolean>('MINIO_USE_SSL', false);
@@ -167,15 +171,49 @@ export class StorageService {
     const { bucket, path, contentType, metadata } = options;
     const timestamp = Date.now();
     const fileExtension = file.originalname.split('.').pop() || '';
-    const key = `${path}/${timestamp}.${fileExtension}`;
+
+    let bufferToUpload = file.buffer;
+    let finalContentType = contentType || file.mimetype;
+    let finalExtension = fileExtension;
+
+    // Compress images using FLoCIC
+    if (options.bucket === 'images' && this.isImageFile(file.mimetype)) {
+      try {
+        this.logger.log(
+          `Compressing image with FLoCIC: ${file.originalname} (${file.buffer.length} bytes)`,
+        );
+        bufferToUpload = await this.flocicService.compressImage(file.buffer);
+        finalContentType = 'application/octet-stream'; // FLoCIC compressed format
+        finalExtension = 'flc'; // FLoCIC extension
+        this.logger.log(
+          `Compression complete: ${file.buffer.length} -> ${bufferToUpload.length} bytes (${((1 - bufferToUpload.length / file.buffer.length) * 100).toFixed(2)}% reduction)`,
+        );
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.logger.warn(
+          `FLoCIC compression failed, using original: ${errorMessage}`,
+        );
+        // Fallback to original if compression fails
+      }
+    }
+
+    const key = `${path}/${timestamp}.${finalExtension}`;
 
     try {
       const putObjectCommand = new PutObjectCommand({
         Bucket: this.buckets[bucket],
         Key: key,
-        Body: file.buffer,
-        ContentType: contentType || file.mimetype,
-        Metadata: metadata || {},
+        Body: bufferToUpload,
+        ContentType: finalContentType,
+        Metadata: {
+          ...(metadata || {}),
+          originalSize: file.buffer.length.toString(),
+          compressed: (
+            options.bucket === 'images' && finalExtension === 'flc'
+          ).toString(),
+          originalMimeType: file.mimetype,
+        },
         ACL: 'public-read',
       });
 
@@ -195,6 +233,47 @@ export class StorageService {
       this.logger.error(`Failed to upload file: ${errorMessage}`);
       throw new Error(`Failed to upload file: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Get file from MinIO storage
+   */
+  async getFile(
+    bucket: keyof typeof this.buckets,
+    key: string,
+  ): Promise<Buffer> {
+    try {
+      const getObjectCommand = new GetObjectCommand({
+        Bucket: this.buckets[bucket],
+        Key: key,
+      });
+
+      const response = await this.s3Client.send(getObjectCommand);
+      const chunks: Uint8Array[] = [];
+
+      if (response.Body) {
+        const stream = response.Body as AsyncIterable<Uint8Array>;
+        for await (const chunk of stream) {
+          chunks.push(chunk);
+        }
+      }
+
+      return Buffer.concat(chunks);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to get file: ${errorMessage}`);
+      throw new Error(`Failed to get file: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Check if file is an image based on MIME type
+   */
+  private isImageFile(mimetype: string): boolean {
+    return ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(
+      mimetype,
+    );
   }
 
   async deleteFile(
