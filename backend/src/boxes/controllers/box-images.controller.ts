@@ -12,7 +12,9 @@ import {
   ParseBoolPipe,
   BadRequestException,
   Put,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -27,13 +29,19 @@ import { BoxImagesService } from '../services/box-images.service';
 import { BoxImage } from '../entities/box-image.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MulterFile } from '../../common/interfaces/multer.interface';
+import { StorageService } from '../../storage/storage.service';
+import { FlocicService } from '../../storage/flocic.service';
 
 @ApiTags('Box Images')
 @ApiBearerAuth('access-token')
 @Controller('boxes/:boxId/images')
 @UseGuards(JwtAuthGuard)
 export class BoxImagesController {
-  constructor(private readonly boxImagesService: BoxImagesService) {}
+  constructor(
+    private readonly boxImagesService: BoxImagesService,
+    private readonly storageService: StorageService,
+    private readonly flocicService: FlocicService,
+  ) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('image'))
@@ -113,5 +121,46 @@ export class BoxImagesController {
     @Param('imageId', ParseIntPipe) imageId: number,
   ): Promise<BoxImage> {
     return await this.boxImagesService.getImageById(imageId);
+  }
+
+  @Get(':imageId/file')
+  @ApiOperation({ summary: 'Get image file (decompressed if needed)' })
+  @ApiParam({ name: 'boxId', description: 'Box ID' })
+  @ApiParam({ name: 'imageId', description: 'Image ID' })
+  async getImageFile(
+    @Param('boxId') boxId: string,
+    @Param('imageId', ParseIntPipe) imageId: number,
+    @Res() res: Response,
+  ): Promise<void> {
+    const boxImage = await this.boxImagesService.getImageById(imageId);
+
+    // Get file from MinIO
+    const compressedBuffer = await this.storageService.getFile(
+      'images',
+      boxImage.imageKey,
+    );
+
+    // Check if file is FLoCIC compressed (by extension)
+    const isCompressed = boxImage.imageKey.endsWith('.flc');
+
+    let imageBuffer: Buffer;
+    let contentType: string;
+
+    if (isCompressed) {
+      // Decompress FLoCIC
+      imageBuffer = await this.flocicService.decompressImage(compressedBuffer);
+      // Use original mime type from database
+      contentType = boxImage.mimeType;
+    } else {
+      // Not compressed, serve as-is
+      imageBuffer = compressedBuffer;
+      contentType = boxImage.mimeType;
+    }
+
+    // Set headers and send
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', imageBuffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
+    res.send(imageBuffer);
   }
 }
