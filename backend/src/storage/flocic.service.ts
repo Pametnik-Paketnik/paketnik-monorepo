@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as sharpImport from 'sharp';
 
-// Handle both ESM and CommonJS module systems
 const sharpWithDefault = sharpImport as unknown as {
   default?: typeof sharpImport;
 };
@@ -20,19 +19,15 @@ export class FlocicService {
    */
   async compressImage(imageBuffer: Buffer): Promise<Buffer> {
     try {
-      // Convert any format to raw RGB using sharp
-      // Explicitly convert to sRGB first to ensure consistent color space
       const result = await sharp(imageBuffer)
-        .toColorspace('srgb') // Normalize to sRGB color space
-        .removeAlpha() // Remove alpha channel if present
+        .toColorspace('srgb')
+        .removeAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
 
       const width: number = result.info.width;
       const height: number = result.info.height;
-      const channels: number = result.info.channels; // Should be 3 for RGB
-
-      // Extract R, G, B channels
+      const channels: number = result.info.channels;
       const rChannel = this.extractChannel(
         result.data,
         width,
@@ -55,12 +50,10 @@ export class FlocicService {
         channels,
       );
 
-      // Compress each channel separately
       const compressedR = this.compressChannel(rChannel, width, height);
       const compressedG = this.compressChannel(gChannel, width, height);
       const compressedB = this.compressChannel(bChannel, width, height);
 
-      // Combine compressed channels into single buffer
       return this.combineCompressedChannels(
         compressedR,
         compressedG,
@@ -81,16 +74,13 @@ export class FlocicService {
    */
   async decompressImage(compressedBuffer: Buffer): Promise<Buffer> {
     try {
-      // Split compressed buffer into R, G, B channels
       const { rChannel, gChannel, bChannel, width, height } =
         this.splitCompressedChannels(compressedBuffer);
 
-      // Decompress each channel
       const decompressedR = this.decompressChannel(rChannel, width);
       const decompressedG = this.decompressChannel(gChannel, width);
       const decompressedB = this.decompressChannel(bChannel, width);
 
-      // Combine channels back to RGB
       const rgbBuffer = this.combineRGBChannels(
         decompressedR,
         decompressedG,
@@ -99,8 +89,6 @@ export class FlocicService {
         height,
       );
 
-      // Convert raw RGB to JPEG using sharp
-      // Explicitly set color space to sRGB to ensure correct color interpretation
       const outputBuffer: Buffer = await sharp(rgbBuffer, {
         raw: {
           width,
@@ -108,7 +96,7 @@ export class FlocicService {
           channels: 3,
         },
       })
-        .toColorspace('srgb') // Ensure sRGB color space
+        .toColorspace('srgb')
         .jpeg({ quality: 95 })
         .toBuffer();
       return outputBuffer;
@@ -119,8 +107,6 @@ export class FlocicService {
       throw new Error(`FLoCIC decompression failed: ${errorMessage}`);
     }
   }
-
-  // ========== Helper Methods ==========
 
   /**
    * Extract single channel (R, G, or B) from RGB buffer
@@ -181,7 +167,7 @@ export class FlocicService {
     // Step 4: Recursive encoding (IC)
     const bitWriter = new BitWriter();
     bitWriter.writeValue(height, 16);
-    bitWriter.writeValue(pixels[0], 8); // Store original first pixel (0-255), NOT C[0]
+    bitWriter.writeValue(pixels[0], 8);
     bitWriter.writeValue(C[n - 1], 32);
     bitWriter.writeValue(n, 32);
 
@@ -196,15 +182,12 @@ export class FlocicService {
    */
   private decompressChannel(compressedData: Buffer, width: number): number[] {
     const bitReader = new BitReader(compressedData);
-    bitReader.readValue(16); // Read height (not used, but needed for format)
-    const firstPixel = bitReader.readValue(8); // Original first pixel value (0-255)
+    bitReader.readValue(16);
+    const firstPixel = bitReader.readValue(8);
     const cn_1 = bitReader.readValue(32);
     const n = bitReader.readValue(32);
 
-    // Calculate C[0] from firstPixel: C[0] = N[0] = 2 * firstPixel
     const c0 = 2 * firstPixel;
-
-    // Reconstruct cumulative array (C)
     const C: number[] = Array.from({ length: n }, (_, i) => {
       if (i === 0) return c0;
       if (i === n - 1) return cn_1;
@@ -213,7 +196,6 @@ export class FlocicService {
 
     this.DeIC(bitReader, C, 0, n - 1);
 
-    // Reconstruct N from C
     const N: number[] = Array.from({ length: n }, (_, i) =>
       i === 0 ? C[0] : 0,
     );
@@ -221,7 +203,6 @@ export class FlocicService {
       N[i] = C[i] - C[i - 1];
     }
 
-    // Reconstruct E from N
     const E: number[] = Array.from({ length: n }, () => 0);
     for (let i = 0; i < n; i++) {
       if (N[i] % 2 === 0) {
@@ -231,8 +212,6 @@ export class FlocicService {
       }
     }
 
-    // Reconstruct pixels (P) from errors
-    // First pixel is stored directly, not as an error
     const P: number[] = Array.from({ length: n }, (_, i) =>
       i === 0 ? firstPixel : 0,
     );
@@ -259,9 +238,9 @@ export class FlocicService {
     if (y === 0) return pixels[y * width + (x - 1)];
     if (x === 0) return pixels[(y - 1) * width + x];
 
-    const a = pixels[y * width + (x - 1)]; // Left
-    const b = pixels[(y - 1) * width + x]; // Top
-    const c = pixels[(y - 1) * width + (x - 1)]; // Top-left
+    const a = pixels[y * width + (x - 1)];
+    const b = pixels[(y - 1) * width + x];
+    const c = pixels[(y - 1) * width + (x - 1)];
 
     if (c >= Math.max(a, b)) return Math.min(a, b);
     if (c <= Math.min(a, b)) return Math.max(a, b);
@@ -290,7 +269,6 @@ export class FlocicService {
   private DeIC(bitReader: BitReader, C: number[], L: number, H: number): void {
     if (H - L > 1) {
       if (C[H] === C[L]) {
-        // Fill with same value
         for (let i = L + 1; i < H; i++) {
           C[i] = C[L];
         }
@@ -326,11 +304,10 @@ export class FlocicService {
     const bSize = Buffer.allocUnsafe(4);
     bSize.writeUInt32BE(bCompressed.length, 0);
 
-    // Metadata: width(4B) + height(4B) + format(1B) = 9 bytes
     const metadata = Buffer.allocUnsafe(9);
     metadata.writeUInt32BE(width, 0);
     metadata.writeUInt32BE(height, 4);
-    metadata.writeUInt8(0x01, 8); // Format version
+    metadata.writeUInt8(0x01, 8);
 
     return Buffer.concat([
       metadata,
@@ -355,27 +332,23 @@ export class FlocicService {
   } {
     let offset = 0;
 
-    // Read metadata
     const width = compressedBuffer.readUInt32BE(offset);
     offset += 4;
     const height = compressedBuffer.readUInt32BE(offset);
     offset += 4;
-    compressedBuffer.readUInt8(offset); // Read format version (not used)
+    compressedBuffer.readUInt8(offset);
     offset += 1;
 
-    // Read R channel
     const rSize = compressedBuffer.readUInt32BE(offset);
     offset += 4;
     const rChannel = compressedBuffer.subarray(offset, offset + rSize);
     offset += rSize;
 
-    // Read G channel
     const gSize = compressedBuffer.readUInt32BE(offset);
     offset += 4;
     const gChannel = compressedBuffer.subarray(offset, offset + gSize);
     offset += gSize;
 
-    // Read B channel
     const bSize = compressedBuffer.readUInt32BE(offset);
     offset += 4;
     const bChannel = compressedBuffer.subarray(offset, offset + bSize);
@@ -396,20 +369,18 @@ export class FlocicService {
     const buffer = Buffer.allocUnsafe(width * height * 3);
     for (let i = 0; i < r.length; i++) {
       const idx = i * 3;
-      // Ensure values are clamped to valid byte range and rounded
       const rVal = Math.max(0, Math.min(255, Math.round(r[i])));
       const gVal = Math.max(0, Math.min(255, Math.round(g[i])));
       const bVal = Math.max(0, Math.min(255, Math.round(b[i])));
 
-      buffer[idx] = rVal; // R
-      buffer[idx + 1] = gVal; // G
-      buffer[idx + 2] = bVal; // B
+      buffer[idx] = rVal;
+      buffer[idx + 1] = gVal;
+      buffer[idx + 2] = bVal;
     }
     return buffer;
   }
 }
 
-// ========== BitWriter Class ==========
 class BitWriter {
   data: number[] = [];
   private currentByte = 0;
@@ -440,7 +411,6 @@ class BitWriter {
   }
 }
 
-// ========== BitReader Class ==========
 class BitReader {
   private data: Buffer;
   private byteIndex = 0;
