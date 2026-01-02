@@ -3,7 +3,6 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
-import { compare } from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { TokenBlacklistService } from './services/token-blacklist.service';
@@ -75,19 +74,14 @@ export class AuthService {
     // Find user by email
     const user = await this.usersService.findByEmail(loginDto.email);
 
-    // Compare passwords
-    const isPasswordValid = await compare(
-      loginDto.password,
-      user.hashedPassword,
-    );
-
-    if (!isPasswordValid) {
+    // Compare passwords (plain text comparison)
+    if (loginDto.password !== user.password) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Check if any 2FA is enabled
-    const hasTotp = user.totpEnabled;
-    const hasFace = user.faceEnabled;
+    // Check if any 2FA is enabled (explicitly check for true, not just truthy)
+    const hasTotp = user.totpEnabled === true;
+    const hasFace = user.faceEnabled === true;
 
     if (hasTotp || hasFace) {
       // Generate temporary token (short-lived, 5 minutes)

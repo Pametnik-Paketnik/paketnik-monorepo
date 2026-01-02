@@ -32,7 +32,7 @@ export class User {
 
   @Column({ name: 'hashed_password' })
   @Exclude()
-  hashedPassword: string;
+  password: string;
 
   @Column({
     type: 'enum',
@@ -47,10 +47,20 @@ export class User {
   @Exclude()
   totpSecret: string | null;
 
-  @Column({ name: 'totp_enabled', default: false })
+  @Column({
+    name: 'totp_enabled',
+    type: 'boolean',
+    default: false,
+    nullable: false,
+  })
   totpEnabled: boolean;
 
-  @Column({ name: 'face_enabled', default: false })
+  @Column({
+    name: 'face_enabled',
+    type: 'boolean',
+    default: false,
+    nullable: false,
+  })
   faceEnabled: boolean;
 
   // Relationship: Each cleaner belongs to exactly one host

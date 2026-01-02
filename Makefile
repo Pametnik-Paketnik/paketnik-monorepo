@@ -39,6 +39,14 @@ clean: ## Remove all containers, networks, and volumes
 	docker system prune -f
 
 # Service-specific commands
+backend-restart: ## Restart backend service (no rebuild)
+	@echo "🔄 Restarting backend service..."
+	$(DC) restart backend
+
+backend-rebuild: ## Rebuild and restart backend service
+	@echo "🔨 Rebuilding and restarting backend service..."
+	$(DC) up -d --build backend
+
 backend-logs: ## Show logs from backend service
 	@echo "📋 Showing backend logs..."
 	$(DC) logs -f backend

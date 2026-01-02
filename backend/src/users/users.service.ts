@@ -8,7 +8,6 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { hash, genSalt } from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
@@ -16,11 +15,6 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
-
-  private async hashPassword(password: string): Promise<string> {
-    const salt = await genSalt(10);
-    return hash(password, salt);
-  }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     // Check if email already exists
@@ -32,15 +26,12 @@ export class UsersService {
       throw new ConflictException('Email already exists');
     }
 
-    // Hash the password
-    const hashedPassword = await this.hashPassword(createUserDto.password);
-
-    // Create new user
+    // Create new user with plain password
     const user = this.usersRepository.create({
       name: createUserDto.name,
       surname: createUserDto.surname,
       email: createUserDto.email,
-      hashedPassword,
+      password: createUserDto.password,
       userType: createUserDto.userType,
     });
 
@@ -90,7 +81,7 @@ export class UsersService {
     }
 
     if (updateUserDto.password) {
-      user.hashedPassword = await this.hashPassword(updateUserDto.password);
+      user.password = updateUserDto.password;
     }
 
     if (updateUserDto.userType) {

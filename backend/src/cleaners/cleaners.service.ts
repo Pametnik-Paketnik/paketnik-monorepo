@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { User, UserType } from '../users/entities/user.entity';
 import { CreateCleanerDto } from './dto/create-cleaner.dto';
 import { UpdateCleanerDto } from './dto/update-cleaner.dto';
@@ -40,15 +39,12 @@ export class CleanersService {
       throw new ConflictException('Email already exists');
     }
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(createCleanerDto.password, 10);
-
-    // Create the cleaner
+    // Create the cleaner with plain password
     const cleaner = this.usersRepository.create({
       name: createCleanerDto.name,
       surname: createCleanerDto.surname,
       email: createCleanerDto.email,
-      hashedPassword,
+      password: createCleanerDto.password,
       userType: UserType.CLEANER,
       host,
     });
@@ -140,7 +136,7 @@ export class CleanersService {
     }
 
     if (updateCleanerDto.password) {
-      cleaner.hashedPassword = await bcrypt.hash(updateCleanerDto.password, 10);
+      cleaner.password = updateCleanerDto.password;
     }
 
     return this.usersRepository.save(cleaner);

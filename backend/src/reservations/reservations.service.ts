@@ -503,8 +503,14 @@ export class ReservationsService {
       );
     }
 
-    // Validate time window (check-out allowed from checkinAt to end of checkoutAt date)
+    // For demo purposes: Allow immediate checkout after check-in
+    // Time window validation is disabled - once checked in, user can check out immediately
+    // This makes it easier to test the full flow without waiting for scheduled dates
     const now = new Date();
+
+    // Note: Time window validation commented out for demo purposes
+    // Uncomment below if you want to enforce scheduled check-out times in production
+    /*
     const checkoutStart = new Date(reservation.checkinAt);
     const checkoutDate = new Date(reservation.checkoutAt);
     const checkoutEnd = new Date(
@@ -521,6 +527,7 @@ export class ReservationsService {
         `Check-out is only allowed between ${checkoutStart.toISOString()} and ${checkoutEnd.toISOString()}`,
       );
     }
+    */
 
     try {
       // Open the box using BoxesService
