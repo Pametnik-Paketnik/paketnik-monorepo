@@ -3,6 +3,7 @@ services:
     depends_on:
       - db
       - minio
+      - redis
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -44,6 +45,34 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  # Add Redis service
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    command: ["redis-server", "--requirepass", "your_password_here"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal
+
+  # Optional: Redis GUI for development
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    volumes:
+      - redis-insight:/data
+    networks:
+      - default
+      - internal
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin
@@ -78,6 +107,8 @@ volumes:
   pgdata:
   pgadmin-data:
   minio-data:
+  redis-data:
+  redis-insight:
 
 networks:
   internal:
